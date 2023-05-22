@@ -1,7 +1,35 @@
 #!/usr/bin/python3
 # qubes-task-gui.py
+
+# TODO following imports somehow needed for execution already built pyinstaller exe
+from __future__ import print_function
+import xml.etree.ElementTree
+import glob
+import numbers
+import ast
+# TODO end of imports which are required by pyinstaller exe
+
 import subprocess
 import sys
+
+import json
+
+
+# Following code ensure that pyinstaller exe use exact needed imports
+def append_system_libs():
+    # execute the "python3 -c 'import site; print(json.dumps(site.getsitepackages()))'" command and capture the output
+    result = subprocess.run(["python3", "-c", "import site, json; print(json.dumps(site.getsitepackages()))"],
+                            stdout=subprocess.PIPE)
+
+    # extract the output from the result and parse it as JSON
+    output = json.loads(result.stdout)
+    # append each path to sys.path
+    for path in output:
+        sys.path.append(path)
+
+
+# let's use all libraries from the client to ensure maximum compatibility
+append_system_libs()
 
 from PyQt5 import QtWidgets, QtGui, uic
 from PyQt5.QtWidgets import (
