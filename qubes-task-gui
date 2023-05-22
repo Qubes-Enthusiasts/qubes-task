@@ -34,12 +34,12 @@ append_system_libs()
 from PyQt5 import QtWidgets, QtGui, uic
 from PyQt5.QtWidgets import (
     QWidget, QApplication, QButtonGroup, QHBoxLayout, QVBoxLayout,
-    QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea, 
-    QSizePolicy, QSpacerItem )
+    QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea,
+    QSizePolicy, QSpacerItem, QTabWidget)
 
 from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen
-#from row import TaskRowWidget
+# from row import TaskRowWidget
 from qubes_task import *
 from qubesadmin.tools.qvm_template import Template as Task
 
@@ -47,7 +47,7 @@ _3isec_repo_path = "/etc/yum.repos.d/3isec-dom0.repo"
 unman_public_key_path = "/etc/pki/rpm-gpg/RPM-GPG-KEY-unman"
 
 appl = qubesadmin.Qubes()
-args=['dict']
+args = ['dict']
 p_args, args = parser.parse_known_args(args)
 p_args = parser.parse_args(args, p_args)
 p_args.repo_files = REPO_FILE
@@ -59,7 +59,7 @@ class TaskRowWidget(QWidget):
     def __init__(self, parent, name, summary):
         super(TaskRowWidget, self).__init__()
         self.parent = parent
-        self.name = name # Name of widget used for searching.
+        self.name = name  # Name of widget used for searching.
         self.summary = summary
         self.is_on = False
 
@@ -73,20 +73,34 @@ class TaskRowWidget(QWidget):
         self.btn_details.clicked.connect(parent.details_clicked)
 
         self.hbox = QHBoxLayout()
-        self.hbox.addWidget(self.checked,20)
-        self.hbox.addWidget(self.lbl2,60)
+        self.hbox.addWidget(self.checked, 20)
+        self.hbox.addWidget(self.lbl2, 60)
         self.hbox.addWidget(self.btn_details)
         self.setLayout(self.hbox)
 
 
 class MainWindow(QMainWindow):
 
-
     def __init__(self, command='dict', *args, **kwargs):
         super().__init__()
 
-        self.tasks = QWidget()  # Tasks container widget.
-        self.tasksLayout = QVBoxLayout()   # Tasks container layout.
+        self.tabWidget = QTabWidget()
+        # Create tabs
+        self.tabOverview = QWidget()
+        self.tabTasks = QWidget()
+
+        # Add tabs to the tab widget
+        self.tabWidget.addTab(self.tabOverview, "Overview")
+        self.tabWidget.addTab(self.tabTasks, "Tasks")
+
+        # Tab overview
+        v_layout_overview = QVBoxLayout()
+        label = QLabel("Task manager")
+        v_layout_overview.addWidget(label)
+        self.tabOverview.setLayout(v_layout_overview)
+
+        # Tab tasks
+        self.tasksLayout = QVBoxLayout()  # Tasks container layout.
         self.taskGroup = QButtonGroup()
         self.taskGroup.setExclusive(False)
 
@@ -111,7 +125,7 @@ class MainWindow(QMainWindow):
         self.tasksLayout.addItem(spacer)
         self.tasks.setLayout(self.tasksLayout)
         self.lbl = QLabel(""" Description
-""")
+        """)
         self.lbl.setAlignment(Qt.AlignTop)
         # Scroll Area Properties.
         self.scroll = QScrollArea()
@@ -133,15 +147,14 @@ class MainWindow(QMainWindow):
 
         # Add the items to VBoxLayout (applied to container widget)
         # which encompasses the whole window.
-        container = QWidget()
         containerLayout = QVBoxLayout()
-        #containerLayout.addWidget(self.searchbar)
+        # containerLayout.addWidget(self.searchbar)
         containerLayout.addWidget(self.btn_install)
-        containerLayout.addWidget(self.scroll,60)
-        containerLayout.addWidget(self.scroll2,40)
+        containerLayout.addWidget(self.scroll, 60)
+        containerLayout.addWidget(self.scroll2, 40)
 
-        container.setLayout(containerLayout)
-        self.setCentralWidget(container)
+        self.tabTasks.setLayout(containerLayout)
+        self.setCentralWidget(self.tabWidget)
 
         self.setGeometry(600, 100, 900, 600)
         self.setWindowTitle('Qubes Task Manager')
@@ -152,31 +165,30 @@ class MainWindow(QMainWindow):
         self.outputs = list_tasks(p_args, appl, 'dict')
         self.widget_names = self.outputs.keys()
 
-
-    def details_clicked(widget,state):
+    def details_clicked(widget, state):
         sending_widget = widget.sender()
         name = (sending_widget.accessibleName())
         desc = widget.outputs[name]['description']
         w.lbl.setText(desc)
 
-    def install_tasks(widget,state):
+    def install_tasks(widget, state):
         update_cmd = "sudo qubes-dom0-update "
         prefix = "3isec-qubes-"
         checked_buttons = [i for i, button in enumerate(w.taskGroup.buttons()) if button.isChecked()]
         pkgs_to_install = []
         for i in checked_buttons:
-            pkgs_to_install.append(prefix+w.taskGroup.buttons()[i].text())
+            pkgs_to_install.append(prefix + w.taskGroup.buttons()[i].text())
         try:
             install_list = " ".join(pkgs_to_install)
-            child = subprocess.Popen(update_cmd + install_list,shell=True)
+            child = subprocess.Popen(update_cmd + install_list, shell=True)
             output = child.communicate()[0]
         except Exception as e:  # pylint: disable=broad-except
-            #output = child.communicate()[0]
+            # output = child.communicate()[0]
             return 1
         return 0
+
 
 app = QtWidgets.QApplication(sys.argv)
 w = MainWindow()
 w.show()
 sys.exit(app.exec_())
-
