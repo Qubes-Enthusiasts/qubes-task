@@ -40,8 +40,11 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen
 #from row import TaskRowWidget
-from qubesadmin.tools.qubes_task import *
+from qubes_task import *
 from qubesadmin.tools.qvm_template import Template as Task
+
+_3isec_repo_path = "/etc/yum.repos.d/3isec-dom0.repo"
+unman_public_key_path = "/etc/pki/rpm-gpg/RPM-GPG-KEY-unman"
 
 appl = qubesadmin.Qubes()
 args=['dict']
@@ -49,9 +52,7 @@ p_args, args = parser.parse_known_args(args)
 p_args = parser.parse_args(args, p_args)
 p_args.repo_files = REPO_FILE
 p_args.updatevm = appl.updatevm
-outputs={}
-outputs=list_tasks(p_args ,appl, 'dict')
-widget_names =  outputs.keys()
+
 
 class TaskRowWidget(QWidget):
 
@@ -59,8 +60,8 @@ class TaskRowWidget(QWidget):
         super(TaskRowWidget, self).__init__()
         self.parent = parent
         self.name = name # Name of widget used for searching.
-        self.summary = summary 
-        self.is_on = False 
+        self.summary = summary
+        self.is_on = False
 
         self.setAccessibleName = name
         self.lbl2 = QLabel(self.summary)
@@ -89,13 +90,22 @@ class MainWindow(QMainWindow):
         self.taskGroup = QButtonGroup()
         self.taskGroup.setExclusive(False)
 
-        self.widgets = []
+        self.is_3isec_repo_inited = (os.path.isfile(_3isec_repo_path) and os.path.isfile(unman_public_key_path))
 
-        for name in widget_names:
-            detail = outputs[name]['summary']
-            item = TaskRowWidget(self, name, detail)
-            self.tasksLayout.addWidget(item)
-            self.widgets.append(item)
+        if self.is_3isec_repo_inited:
+            self.get_repos()
+            self.widgets = []
+            for name in self.widget_names:
+                detail = self.outputs[name]['summary']
+                item = TaskRowWidget(self, name, detail)
+                self.tasksLayout.addWidget(item)
+                self.widgets.append(item)
+        else:
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("3isec repo is not installed"),
+                self.tr("All installation require i3sec installation! EXIT 0"))
+            exit(0)
 
         spacer = QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.tasksLayout.addItem(spacer)
@@ -136,12 +146,17 @@ class MainWindow(QMainWindow):
         self.setGeometry(600, 100, 900, 600)
         self.setWindowTitle('Qubes Task Manager')
         self.setWindowIcon = QtGui.QIcon.fromTheme("qubes-manager")
-    
+
+    def get_repos(self):
+        self.outputs = {}
+        self.outputs = list_tasks(p_args, appl, 'dict')
+        self.widget_names = self.outputs.keys()
+
 
     def details_clicked(widget,state):
         sending_widget = widget.sender()
         name = (sending_widget.accessibleName())
-        desc = outputs[name]['description']
+        desc = widget.outputs[name]['description']
         w.lbl.setText(desc)
 
     def install_tasks(widget,state):
