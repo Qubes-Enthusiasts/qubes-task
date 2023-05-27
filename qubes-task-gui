@@ -105,113 +105,117 @@ class MainWindow(QMainWindow):
 
         self.is_3isec_repo_inited = is_inited_repo_3isec()
 
+        # Add the items to VBoxLayout (applied to container widget)
+        # which encompasses the whole window.
+        self.taskContainerLayout = QVBoxLayout()
+
         if self.is_3isec_repo_inited:
-            self.get_repos()
-            self.widgets = []
-            for name in self.widget_names:
-                detail = self.outputs[name]['summary']
-                item = TaskRowWidget(self, name, detail)
-                self.tasksLayout.addWidget(item)
-                self.widgets.append(item)
-            spacer = QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding)
-            self.tasks = QWidget()
-            self.tasksLayout.addItem(spacer)
-            self.tasks.setLayout(self.tasksLayout)
-            self.lbl = QLabel(""" Description
-                    """)
-            self.lbl.setAlignment(Qt.AlignTop)
-            # Scroll Area Properties.
-            self.scroll = QScrollArea()
-            self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-            self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            self.scroll.setWidgetResizable(True)
-            self.scroll.setWidget(self.tasks)
-
-            self.scroll2 = QScrollArea()
-            self.scroll2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-            self.scroll2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            self.scroll2.setWidgetResizable(True)
-            self.scroll2.setWidget(self.lbl)
-
-            self.searchbar = QLineEdit()
-            self.btn_install = QPushButton("Install")
-            self.btn_install.setCheckable(False)
-            self.btn_install.clicked.connect(self.install_tasks)
-
-            # Add the items to VBoxLayout (applied to container widget)
-            # which encompasses the whole window.
-            containerLayout = QVBoxLayout()
-            # containerLayout.addWidget(self.searchbar)
-            containerLayout.addWidget(self.btn_install)
-            containerLayout.addWidget(self.scroll, 60)
-            containerLayout.addWidget(self.scroll2, 40)
-            self.tabTasks.setLayout(containerLayout)
+            self.render_tasks()
         else:
-            text = """The repository definition is:
+            self.render_repo_install()
 
-            [3isec-dom0-current]
-            name = 3isec Qubes Dom0 Repository (updates)
-            baseurl = https://qubes.3isec.org/rpm/r$releasever/current/dom0/fc32
-            skip_if_unavailable=False
-            enabled = 1
-            metadata_expire = 6h
-            gpgcheck = 1
-            gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman
-
-            Create a file in dom0 with this content at /etc/yum.repos.d/3isec-dom0.repo
-
-            All packages are signed with my Qubes OS Signing key.
-            You'll need to get this from a keyserver, or two, to make sure all is fine:
-            keyserver.ubuntu.com or pgp.mit.edu
-
-            You can also check the Qubes users mailing list or look on github.
-
-            Once you have copies of the key, check the fingerprint:
-
-            gpg -n --import --import-options import-show unman.pub
-
-            replacing unman.pub with the path to the key.
-            The output should look similar to this:
-
-            pub   rsa4096 2016-06-25 [SC]
-                  4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
-            uid           [ unknown] unman (Qubes OS signing key) 
-            sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
-            sub   rsa4096 2016-06-25 [E]
-
-            In particular, check that the output from your command contains the fingerprint 4B1F 400D F256 51B5 3C41 41B3 8B3F 30F9 C8C0 C2EF
-
-            When you are happy, copy the key in to dom0:
-
-            qvm-run -p QUBE_WHERE_YOU_DOWNLOADED_KEY 'cat PATH_TO_KEY' > RPM-GPG-KEY-unman
-            sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/
-            """
-            layout = QVBoxLayout()
-
-            # Create QLabel instance with some text
-            label = QLabel(text)
-            label.setAlignment(Qt.AlignCenter)  # Align text to the center
-
-            # Create QPushButton instances for OK and Cancel
-            button_ok = QPushButton('OK')
-
-            def accept():
-                install_repo_3isec()
-
-            # Connect buttons to the appropriate slots (functions)
-            button_ok.clicked.connect(accept)  # built-in QDialog function to accept (OK) the dialog
-
-            # Add the QLabel and QPushButtons to the layout
-            layout.addWidget(label)
-            layout.addWidget(button_ok)
-
-            self.tabTasks.setLayout(layout)
-
+        self.tabTasks.setLayout(self.taskContainerLayout)
         self.setCentralWidget(self.tabWidget)
 
         self.setGeometry(600, 100, 900, 600)
         self.setWindowTitle('Qubes Task Manager')
         self.setWindowIcon = QtGui.QIcon.fromTheme("qubes-manager")
+
+    def render_repo_install(self):
+        text = """The repository definition is:
+
+                    [3isec-dom0-current]
+                    name = 3isec Qubes Dom0 Repository (updates)
+                    baseurl = https://qubes.3isec.org/rpm/r$releasever/current/dom0/fc32
+                    skip_if_unavailable=False
+                    enabled = 1
+                    metadata_expire = 6h
+                    gpgcheck = 1
+                    gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman
+
+                    Create a file in dom0 with this content at /etc/yum.repos.d/3isec-dom0.repo
+
+                    All packages are signed with my Qubes OS Signing key.
+                    You'll need to get this from a keyserver, or two, to make sure all is fine:
+                    keyserver.ubuntu.com or pgp.mit.edu
+
+                    You can also check the Qubes users mailing list or look on github.
+
+                    Once you have copies of the key, check the fingerprint:
+
+                    gpg -n --import --import-options import-show unman.pub
+
+                    replacing unman.pub with the path to the key.
+                    The output should look similar to this:
+
+                    pub   rsa4096 2016-06-25 [SC]
+                          4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
+                    uid           [ unknown] unman (Qubes OS signing key) 
+                    sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
+                    sub   rsa4096 2016-06-25 [E]
+
+                    In particular, check that the output from your command contains the fingerprint 4B1F 400D F256 51B5 3C41 41B3 8B3F 30F9 C8C0 C2EF
+
+                    When you are happy, copy the key in to dom0:
+
+                    qvm-run -p QUBE_WHERE_YOU_DOWNLOADED_KEY 'cat PATH_TO_KEY' > RPM-GPG-KEY-unman
+                    sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/
+                    """
+
+        # Create QLabel instance with some text
+        label = QLabel(text)
+        label.setAlignment(Qt.AlignCenter)  # Align text to the center
+
+        # Create QPushButton instances for OK and Cancel
+        button_ok = QPushButton('OK')
+
+        def accept():
+            install_repo_3isec()
+
+        # Connect buttons to the appropriate slots (functions)
+        button_ok.clicked.connect(accept)  # built-in QDialog function to accept (OK) the dialog
+
+        # Add the QLabel and QPushButtons to the layout
+        self.taskContainerLayout.addWidget(label)
+        self.taskContainerLayout.addWidget(button_ok)
+
+    def render_tasks(self):
+        self.get_repos()
+        self.widgets = []
+        for name in self.widget_names:
+            detail = self.outputs[name]['summary']
+            item = TaskRowWidget(self, name, detail)
+            self.tasksLayout.addWidget(item)
+            self.widgets.append(item)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.tasks = QWidget()
+        self.tasksLayout.addItem(spacer)
+        self.tasks.setLayout(self.tasksLayout)
+        self.lbl = QLabel(""" Description
+                            """)
+        self.lbl.setAlignment(Qt.AlignTop)
+        # Scroll Area Properties.
+        self.scroll = QScrollArea()
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self.tasks)
+
+        self.scroll2 = QScrollArea()
+        self.scroll2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.scroll2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll2.setWidgetResizable(True)
+        self.scroll2.setWidget(self.lbl)
+
+        self.searchbar = QLineEdit()
+        self.btn_install = QPushButton("Install")
+        self.btn_install.setCheckable(False)
+        self.btn_install.clicked.connect(self.install_tasks)
+
+        # containerLayout.addWidget(self.searchbar)
+        self.taskContainerLayout.addWidget(self.btn_install)
+        self.taskContainerLayout.addWidget(self.scroll, 60)
+        self.taskContainerLayout.addWidget(self.scroll2, 40)
 
     def get_repos(self):
         self.outputs = {}
