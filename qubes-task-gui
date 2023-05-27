@@ -83,14 +83,16 @@ class Worker(QThread):
     finished = pyqtSignal(dict)
 
     def run(self):
-        self.finished.emit(list_tasks(p_args, appl, 'dict'))
+        try:
+            tsks = list_tasks(p_args, appl, 'dict')
+        except  Exception as e:
+            tsks = {"exception": str(e)}
+        self.finished.emit(tsks)
 
 
 class MainWindow(QMainWindow):
-
     fancy_directory = os.path.expanduser("~/.qubes-fancy-task")
     fancy_state_path = os.path.join(fancy_directory, 'state')
-
 
     def __init__(self, command='dict', *args, **kwargs):
         super().__init__()
@@ -206,7 +208,6 @@ class MainWindow(QMainWindow):
         installStackWidget.setLayout(installStackLayout)
         return installStackWidget
 
-
     def render_tasks(self):
         # Tab tasks
         self.tasksLayout = QVBoxLayout()  # Tasks container layout.
@@ -239,7 +240,8 @@ class MainWindow(QMainWindow):
 
         self.refresh_on_start_checkbox2 = QCheckBox("Refresh tasks on start")
         self.refresh_on_start_checkbox2.setChecked(self.update_on_start())
-        self.refresh_on_start_checkbox2.stateChanged.connect(self.checkbox_state_changed)  # Connect the signal to the slot
+        self.refresh_on_start_checkbox2.stateChanged.connect(
+            self.checkbox_state_changed)  # Connect the signal to the slot
 
         taskStackLayout = QVBoxLayout()
         # containerLayout.addWidget(self.searchbar)
@@ -261,7 +263,8 @@ class MainWindow(QMainWindow):
 
         self.refresh_on_start_checkbox1 = QCheckBox("Refresh tasks on start")
         self.refresh_on_start_checkbox1.setChecked(self.update_on_start())
-        self.refresh_on_start_checkbox1.stateChanged.connect(self.checkbox_state_changed)  # Connect the signal to the slot
+        self.refresh_on_start_checkbox1.stateChanged.connect(
+            self.checkbox_state_changed)  # Connect the signal to the slot
 
         self.btn_refresh = QPushButton("Pull tasks; can take time if sys-whonix not started")
         self.btn_refresh.setCheckable(False)
@@ -278,12 +281,20 @@ class MainWindow(QMainWindow):
     def finish_refresh(self, results):
         self.outputs = {}
         self.outputs = results
-        self.widget_names = self.outputs.keys()
-        for name in self.widget_names:
-            detail = self.outputs[name]['summary']
-            item = TaskRowWidget(self, name, detail)
-            self.tasksLayout.addWidget(item)
-        self.taskContainerLayout.setCurrentIndex(0)
+        if "exception" in self.outputs:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    self.tr("EXCEPTION"),
+                    self.tr(f"Happened exception during tasks refresh {self.outputs['exception']}\n PLEASE TRY AGAIN"))
+                self.btn_refresh.show()
+                self.lbl.hide()
+        else:
+            self.widget_names = self.outputs.keys()
+            for name in self.widget_names:
+                detail = self.outputs[name]['summary']
+                item = TaskRowWidget(self, name, detail)
+                self.tasksLayout.addWidget(item)
+            self.taskContainerLayout.setCurrentIndex(0)
         self.refresh_timer.stop()
 
     def refresh_tasks(self):
@@ -297,7 +308,6 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self.finish_refresh)
         self.worker.start()
 
-
     def update_label(self):
         self.refresh_counter += 1
 
@@ -306,9 +316,7 @@ class MainWindow(QMainWindow):
         if self.refresh_counter > 8:  # i just choosed 8; no sense
             refresh_text += "\nrefresh taking longer then usual probably it inits sys-whonix\n"
 
-
         self.lbl.setText(refresh_text)
-
 
     def details_clicked(widget, state):
         sending_widget = widget.sender()
@@ -347,7 +355,8 @@ class MainWindow(QMainWindow):
     def set_update_on_start(self, value):
         print(value)
         with shelve.open(self.fancy_state_path) as db:
-            db['update_on_start'] = bool(value) # need stronger validation
+            db['update_on_start'] = bool(value)  # need stronger validation
+
 
 app = QtWidgets.QApplication(sys.argv)
 w = MainWindow()
