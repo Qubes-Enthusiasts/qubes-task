@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 import json
+import shelve
 
 from unman_repo_installaton import install_repo_3isec, is_inited_repo_3isec
 
@@ -87,8 +88,14 @@ class Worker(QThread):
 
 class MainWindow(QMainWindow):
 
+    fancy_directory = os.path.expanduser("~/.qubes-fancy-task")
+    fancy_state_path = os.path.join(fancy_directory, 'state')
+
+
     def __init__(self, command='dict', *args, **kwargs):
         super().__init__()
+
+        os.makedirs(self.fancy_directory, exist_ok=True)
 
         self.tabWidget = QTabWidget()
         # Create tabs
@@ -116,6 +123,9 @@ class MainWindow(QMainWindow):
 
         if self.is_3isec_repo_inited:
             self.taskContainerLayout.setCurrentIndex(2)
+            if self.update_on_start():
+                self.refresh_on_start_checkbox1.hide()
+                self.refresh_tasks()
         else:
             self.taskContainerLayout.setCurrentIndex(1)
 
@@ -125,6 +135,12 @@ class MainWindow(QMainWindow):
         self.setGeometry(600, 100, 900, 600)
         self.setWindowTitle('Qubes Task Manager')
         self.setWindowIcon = QtGui.QIcon.fromTheme("qubes-manager")
+
+    def checkbox_state_changed(self, state):
+        if state == 0:
+            self.set_update_on_start(False)
+        elif state == 2:
+            self.set_update_on_start(True)
 
     def render_repo_install(self):
         text = """The repository definition is:
@@ -221,9 +237,14 @@ class MainWindow(QMainWindow):
         self.btn_install.setCheckable(False)
         self.btn_install.clicked.connect(self.install_tasks)
 
+        self.refresh_on_start_checkbox2 = QCheckBox("Refresh tasks on start")
+        self.refresh_on_start_checkbox2.setChecked(self.update_on_start())
+        self.refresh_on_start_checkbox2.stateChanged.connect(self.checkbox_state_changed)  # Connect the signal to the slot
+
         taskStackLayout = QVBoxLayout()
         # containerLayout.addWidget(self.searchbar)
         taskStackLayout.addWidget(self.btn_install)
+        taskStackLayout.addWidget(self.refresh_on_start_checkbox2)
         taskStackLayout.addWidget(self.scroll, 60)
         taskStackLayout.addWidget(self.scroll2, 40)
         taskStackWidget = QWidget()
@@ -238,6 +259,10 @@ class MainWindow(QMainWindow):
         self.lbl.hide()
         self.refresh_counter = 1
 
+        self.refresh_on_start_checkbox1 = QCheckBox("Refresh tasks on start")
+        self.refresh_on_start_checkbox1.setChecked(self.update_on_start())
+        self.refresh_on_start_checkbox1.stateChanged.connect(self.checkbox_state_changed)  # Connect the signal to the slot
+
         self.btn_refresh = QPushButton("Pull tasks; can take time if sys-whonix not started")
         self.btn_refresh.setCheckable(False)
         self.btn_refresh.clicked.connect(self.refresh_tasks)
@@ -245,6 +270,7 @@ class MainWindow(QMainWindow):
         refreshStackLayout = QVBoxLayout()
         refreshStackLayout.addWidget(self.btn_refresh)
         refreshStackLayout.addWidget(self.lbl)
+        refreshStackLayout.addWidget(self.refresh_on_start_checkbox1)
         refreshStackWidget = QWidget()
         refreshStackWidget.setLayout(refreshStackLayout)
         return refreshStackWidget
@@ -306,6 +332,16 @@ class MainWindow(QMainWindow):
             return 1
         return 0
 
+    def update_on_start(self):
+        with shelve.open(self.fancy_state_path) as db:
+            if 'update_on_start' in db:
+                return db['update_on_start']
+            return False
+
+    def set_update_on_start(self, value):
+        print(value)
+        with shelve.open(self.fancy_state_path) as db:
+            db['update_on_start'] = bool(value) # need stronger validation
 
 app = QtWidgets.QApplication(sys.argv)
 w = MainWindow()
