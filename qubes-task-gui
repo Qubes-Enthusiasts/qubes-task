@@ -324,6 +324,12 @@ class MainWindow(QMainWindow):
         for i in checked_buttons:
             pkgs_to_install.append(prefix + w.taskGroup.buttons()[i].text())
         try:
+            if len(pkgs_to_install) == 0:
+                QtWidgets.QMessageBox.warning(
+                    widget,
+                    widget.tr("No selected tasks"),
+                    widget.tr("No tasks were selected"))
+                return
             install_list = " ".join(pkgs_to_install)
             child = subprocess.Popen(update_cmd + install_list, shell=True)
             output = child.communicate()[0]
