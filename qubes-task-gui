@@ -37,7 +37,7 @@ from PyQt5 import QtWidgets, QtGui, uic
 from PyQt5.QtWidgets import (
     QWidget, QApplication, QButtonGroup, QHBoxLayout, QVBoxLayout,
     QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea,
-    QSizePolicy, QSpacerItem, QTabWidget)
+    QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout)
 
 from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen
@@ -98,21 +98,18 @@ class MainWindow(QMainWindow):
         v_layout_overview.addWidget(label)
         self.tabOverview.setLayout(v_layout_overview)
 
-        # Tab tasks
-        self.tasksLayout = QVBoxLayout()  # Tasks container layout.
-        self.taskGroup = QButtonGroup()
-        self.taskGroup.setExclusive(False)
-
         self.is_3isec_repo_inited = is_inited_repo_3isec()
 
         # Add the items to VBoxLayout (applied to container widget)
         # which encompasses the whole window.
-        self.taskContainerLayout = QVBoxLayout()
+        self.taskContainerLayout = QStackedLayout()
+        self.taskContainerLayout.addWidget(self.render_tasks())
+        self.taskContainerLayout.addWidget(self.render_repo_install())
 
         if self.is_3isec_repo_inited:
-            self.render_tasks()
+            self.taskContainerLayout.setCurrentIndex(0)
         else:
-            self.render_repo_install()
+            self.taskContainerLayout.setCurrentIndex(1)
 
         self.tabTasks.setLayout(self.taskContainerLayout)
         self.setCentralWidget(self.tabWidget)
@@ -171,22 +168,27 @@ class MainWindow(QMainWindow):
 
         def accept():
             install_repo_3isec()
+            self.update_tasks()
+            self.taskContainerLayout.setCurrentIndex(0)
 
         # Connect buttons to the appropriate slots (functions)
         button_ok.clicked.connect(accept)  # built-in QDialog function to accept (OK) the dialog
 
         # Add the QLabel and QPushButtons to the layout
-        self.taskContainerLayout.addWidget(label)
-        self.taskContainerLayout.addWidget(button_ok)
+        installStackLayout = QVBoxLayout()
+        # containerLayout.addWidget(self.searchbar)
+        installStackLayout.addWidget(label)
+        installStackLayout.addWidget(button_ok)
+        installStackWidget = QWidget()
+        installStackWidget.setLayout(installStackLayout)
+        return installStackWidget
+
 
     def render_tasks(self):
-        self.get_repos()
-        self.widgets = []
-        for name in self.widget_names:
-            detail = self.outputs[name]['summary']
-            item = TaskRowWidget(self, name, detail)
-            self.tasksLayout.addWidget(item)
-            self.widgets.append(item)
+        # Tab tasks
+        self.tasksLayout = QVBoxLayout()  # Tasks container layout.
+        self.taskGroup = QButtonGroup()
+        self.taskGroup.setExclusive(False)
         spacer = QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.tasks = QWidget()
         self.tasksLayout.addItem(spacer)
@@ -212,10 +214,21 @@ class MainWindow(QMainWindow):
         self.btn_install.setCheckable(False)
         self.btn_install.clicked.connect(self.install_tasks)
 
+        taskStackLayout = QVBoxLayout()
         # containerLayout.addWidget(self.searchbar)
-        self.taskContainerLayout.addWidget(self.btn_install)
-        self.taskContainerLayout.addWidget(self.scroll, 60)
-        self.taskContainerLayout.addWidget(self.scroll2, 40)
+        taskStackLayout.addWidget(self.btn_install)
+        taskStackLayout.addWidget(self.scroll, 60)
+        taskStackLayout.addWidget(self.scroll2, 40)
+        taskStackWidget = QWidget()
+        taskStackWidget.setLayout(taskStackLayout)
+        return taskStackWidget
+
+    def update_tasks(self):
+        self.get_repos()
+        for name in self.widget_names:
+            detail = self.outputs[name]['summary']
+            item = TaskRowWidget(self, name, detail)
+            self.tasksLayout.addWidget(item)
 
     def get_repos(self):
         self.outputs = {}
