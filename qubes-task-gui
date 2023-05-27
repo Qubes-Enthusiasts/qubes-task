@@ -39,7 +39,7 @@ from PyQt5.QtWidgets import (
     QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea,
     QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, )
 
-from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer
+from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer, QThread
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen
 # from row import TaskRowWidget
 from qubes_task import *
@@ -76,6 +76,13 @@ class TaskRowWidget(QWidget):
         self.hbox.addWidget(self.lbl2, 60)
         self.hbox.addWidget(self.btn_details)
         self.setLayout(self.hbox)
+
+
+class Worker(QThread):
+    finished = pyqtSignal(dict)
+
+    def run(self):
+        self.finished.emit(list_tasks(p_args, appl, 'dict'))
 
 
 class MainWindow(QMainWindow):
@@ -169,8 +176,7 @@ class MainWindow(QMainWindow):
 
         def accept():
             install_repo_3isec()
-            self.update_tasks()
-            self.taskContainerLayout.setCurrentIndex(0)
+            self.taskContainerLayout.setCurrentIndex(2)
 
         # Connect buttons to the appropriate slots (functions)
         button_ok.clicked.connect(accept)  # built-in QDialog function to accept (OK) the dialog
@@ -243,20 +249,27 @@ class MainWindow(QMainWindow):
         refreshStackWidget.setLayout(refreshStackLayout)
         return refreshStackWidget
 
-    def update_tasks(self):
-        self.get_repos()
+    def finish_refresh(self, results):
+        self.outputs = {}
+        self.outputs = results
+        self.widget_names = self.outputs.keys()
         for name in self.widget_names:
             detail = self.outputs[name]['summary']
             item = TaskRowWidget(self, name, detail)
             self.tasksLayout.addWidget(item)
+        self.taskContainerLayout.setCurrentIndex(0)
+        self.refresh_timer.stop()
 
     def refresh_tasks(self):
         self.btn_refresh.hide()
         self.lbl.show()
-        self.timer = QTimer()
-        self.timer.setInterval(1000)  # 1000 ms = 1 s
-        self.timer.timeout.connect(self.update_label)
-        self.timer.start()
+        self.refresh_timer = QTimer()
+        self.refresh_timer.setInterval(1000)  # 1000 ms = 1 s
+        self.refresh_timer.timeout.connect(self.update_label)
+        self.refresh_timer.start()
+        self.worker = Worker()
+        self.worker.finished.connect(self.finish_refresh)
+        self.worker.start()
 
 
     def update_label(self):
@@ -270,11 +283,6 @@ class MainWindow(QMainWindow):
 
         self.lbl.setText(refresh_text)
 
-
-    def get_repos(self):
-        self.outputs = {}
-        self.outputs = list_tasks(p_args, appl, 'dict')
-        self.widget_names = self.outputs.keys()
 
     def details_clicked(widget, state):
         sending_widget = widget.sender()
