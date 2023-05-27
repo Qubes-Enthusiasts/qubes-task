@@ -37,9 +37,9 @@ from PyQt5 import QtWidgets, QtGui, uic
 from PyQt5.QtWidgets import (
     QWidget, QApplication, QButtonGroup, QHBoxLayout, QVBoxLayout,
     QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea,
-    QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout)
+    QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, )
 
-from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess
+from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen
 # from row import TaskRowWidget
 from qubes_task import *
@@ -105,9 +105,10 @@ class MainWindow(QMainWindow):
         self.taskContainerLayout = QStackedLayout()
         self.taskContainerLayout.addWidget(self.render_tasks())
         self.taskContainerLayout.addWidget(self.render_repo_install())
+        self.taskContainerLayout.addWidget(self.refresh_widget())
 
         if self.is_3isec_repo_inited:
-            self.taskContainerLayout.setCurrentIndex(0)
+            self.taskContainerLayout.setCurrentIndex(2)
         else:
             self.taskContainerLayout.setCurrentIndex(1)
 
@@ -223,12 +224,52 @@ class MainWindow(QMainWindow):
         taskStackWidget.setLayout(taskStackLayout)
         return taskStackWidget
 
+    def refresh_widget(self):
+        # Tab tasks
+        self.default_refresh_text = """ Update can take time in case of weak connection or if sys-whonix not started\n"""
+        self.lbl = QLabel(self.default_refresh_text)
+        self.lbl.setAlignment(Qt.AlignTop)
+        self.lbl.hide()
+        self.refresh_counter = 1
+
+        self.btn_refresh = QPushButton("Pull tasks; can take time if sys-whonix not started")
+        self.btn_refresh.setCheckable(False)
+        self.btn_refresh.clicked.connect(self.refresh_tasks)
+
+        refreshStackLayout = QVBoxLayout()
+        refreshStackLayout.addWidget(self.btn_refresh)
+        refreshStackLayout.addWidget(self.lbl)
+        refreshStackWidget = QWidget()
+        refreshStackWidget.setLayout(refreshStackLayout)
+        return refreshStackWidget
+
     def update_tasks(self):
         self.get_repos()
         for name in self.widget_names:
             detail = self.outputs[name]['summary']
             item = TaskRowWidget(self, name, detail)
             self.tasksLayout.addWidget(item)
+
+    def refresh_tasks(self):
+        self.btn_refresh.hide()
+        self.lbl.show()
+        self.timer = QTimer()
+        self.timer.setInterval(1000)  # 1000 ms = 1 s
+        self.timer.timeout.connect(self.update_label)
+        self.timer.start()
+
+
+    def update_label(self):
+        self.refresh_counter += 1
+
+        refresh_text = self.default_refresh_text
+        refresh_text += f"\nit runs for {self.refresh_counter} sec \n"
+        if self.refresh_counter > 8:  # i just choosed 8; no sense
+            refresh_text += "\nrefresh taking longer then usual probably it inits sys-whonix\n"
+
+
+        self.lbl.setText(refresh_text)
+
 
     def get_repos(self):
         self.outputs = {}
