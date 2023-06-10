@@ -39,6 +39,8 @@ def append_system_libs():
         sys.path.append(path)
 
 
+
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -70,6 +72,94 @@ p_args.repo_files = REPO_FILE
 p_args.updatevm = appl.updatevm
 
 from qubesmanager import utils
+
+overview = """<!DOCTYPE html>
+<html>
+<head>
+<style>
+    p {
+        width: 60ch; /* Limit the width to around 80 characters */
+        font-family: Arial, sans-serif;
+        line-height: 1.5;
+    }
+</style>
+</head>
+<body>
+
+<p>
+Qubes OS is a high-security operating system that isolates various tasks for<br>
+increased privacy and security. While it is designed with a security-first<br>
+approach, it also caters to a niche of tech-savvy enthusiasts who value the<br>
+ability to control and isolate various system tasks. Qubes' modularity allows<br>
+for a flexible and customizable experience that these users greatly appreciate.<br>
+</p>
+
+<p>
+The 3isec Qubes Templates Repository is a project created by this enthusiastic<br>
+community that seeks to extend the capabilities of Qubes OS and make it more<br>
+accessible to a broader user base.<br>
+</p>
+
+<p>
+The project consists of three main parts:<br>
+</p>
+
+<ol>
+<li><strong>Qubes Tasks:</strong> These are Salt tasks created by the contributor known as<br>
+unman. Salt is a Python-based, open-source configuration management software<br>
+and remote execution engine. In the context of Qubes OS, Salt tasks are used for<br>
+system configuration, simplifying the setup and management of Qubes. Unman's<br>
+tasks contribute to automating various system setup processes, making it easier<br>
+for both newcomers and experienced users.<br>
+</li>
+<li><strong>Qubes Templates:</strong> Unman also contributes to the creation of Qubes templates.<br>
+Templates in Qubes OS define the root filesystems that are shared by multiple<br>
+qubes (VMs). By developing and sharing these templates, unman provides users<br>
+with more options for their system configurations, enabling greater customization<br>
+and versatility.<br>
+</li>
+<li><strong>Windows Installation:</strong> This component is developed by eliotclick. Windows qubes<br>
+are a highly requested feature in Qubes OS as it allows users to run Windows<br>
+applications in a more secure manner. Eliotclick's contribution makes it easier<br>
+to install and use Windows within Qubes, extending the system's compatibility<br>
+and making it more accessible to users who rely on Windows software.<br>
+</li>
+</ol>
+
+<p>
+This project showcases the vibrant enthusiast community around Qubes OS. It's<br>
+important to note that while Qubes is fundamentally a security-oriented<br>
+operating system, its appeal extends beyond that due to its unique structure and<br>
+design. Enthusiast users not only use Qubes OS but also contribute to its<br>
+development and refinement.<br>
+</p>
+
+<p>
+The enthusiast community plays a vital role in popularizing Qubes OS, testing<br>
+new features, contributing code, and providing valuable feedback. They also help<br>
+in funding the project through donations, ensuring its ongoing development. It's<br>
+a symbiotic relationship that helps Qubes OS grow and evolve while providing<br>
+enthusiast users with an operating system that aligns with their values of<br>
+privacy, security, and control.<br>
+</p>
+
+<p>
+However, it's also important to note that modifying Qubes OS, such as by<br>
+installing additional software into dom0 (the administrative domain), can<br>
+potentially weaken its security. Qubes' security model is based on the principle<br>
+of least privilege, and dom0 is intentionally isolated and limited in its<br>
+network access. Enthusiast users should be aware of the potential risks involved<br>
+in such modifications and weigh them against the benefits. A risk-managed<br>
+approach, understanding the potential implications and taking steps to mitigate<br>
+them, is crucial. In spite of this, the contributions of enthusiast users have<br>
+proven invaluable in enriching the ecosystem and making Qubes OS more resilient<br>
+and robust.<br>
+</p>
+
+</body>
+</html>
+
+"""
 
 
 def random_string(length):
@@ -379,9 +469,14 @@ class MainWindow(QMainWindow):
     def render_overview_tab(self):
         # Tab overview
         v_layout_overview = QVBoxLayout()
-        label = QLabel("Task manager")
-        v_layout_overview.addWidget(label)
-
+        label = QLabel(overview)
+        scroll = QScrollArea()
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout()
+        scroll_layout.addWidget(label)
+        scroll_widget.setLayout(scroll_layout)
+        scroll.setWidget(scroll_widget)
+        v_layout_overview.addWidget(scroll)
         return v_layout_overview
 
     def render_template_tab(self):
