@@ -117,10 +117,71 @@ class MainWindow(QMainWindow):
         self.tabWidget.addTab(self.tabTasks, "Tasks")
         self.tabWidget.addTab(self.tabTemplate, "Templates")
 
+        self.tabTemplate.setLayout(self.render_templates_tab())
+        self.tabOverview.setLayout(self.render_overview_tab())
+
+        self.is_3isec_repo_inited = is_inited_repo_3isec()
+
+        # Add the items to VBoxLayout (applied to container widget)
+        # which encompasses the whole window.
+        self.taskContainerLayout = QStackedLayout()
+        self.taskContainerLayout.addWidget(self.render_tasks())
+        self.taskContainerLayout.addWidget(self.render_repo_install())
+        self.taskContainerLayout.addWidget(self.refresh_widget())
+
+        if self.is_3isec_repo_inited:
+            self.taskContainerLayout.setCurrentIndex(2)
+            if self.update_on_start():
+                self.refresh_on_start_checkbox1.hide()
+                self.refresh_tasks()
+        else:
+            self.taskContainerLayout.setCurrentIndex(1)
+
+        self.tabTasks.setLayout(self.taskContainerLayout)
+        self.setCentralWidget(self.tabWidget)
+
+        self.setGeometry(600, 100, 900, 600)
+        self.setWindowTitle('Qubes Task Manager')
+        self.setWindowIcon = QtGui.QIcon.fromTheme("qubes-manager")
+
+    def checkbox_state_changed(self, state):
+        if state == 0:
+            self.set_update_on_start(False)
+        elif state == 2:
+            self.set_update_on_start(True)
+
+    def render_overview_tab(self):
+        # Tab overview
+        v_layout_overview = QVBoxLayout()
+        label = QLabel("Task manager")
+        v_layout_overview.addWidget(label)
+
+        return v_layout_overview
+
+    def render_templates_tab(self):
         # Tab templates
         v_layout_templates = QVBoxLayout()
         self.btn_template_inst = QPushButton("Set up templates i3sec")
         self.btn_template_inst.setCheckable(False)
+        # self.btn_template_inst.setStyleSheet("""
+        #     QPushButton {
+        #         background-color: #4CAF50;
+        #         color: white;
+        #         border: none;
+        #         padding: 15px 32px;
+        #         text-align: center;
+        #         text-decoration: none;
+        #         display: inline-block;
+        #         font-size: 16px;
+        #         margin: 4px 2px;
+        #         cursor: pointer;
+        #         transition-duration: 0.4s;
+        #     }
+        #
+        #     QPushButton:hover {
+        #         background-color: #45a049;
+        #     }
+        # """)
         self.btn_template_inst.clicked.connect(self.install_templates)
         v_layout_templates.addWidget(self.btn_template_inst)
 
@@ -165,49 +226,11 @@ class MainWindow(QMainWindow):
         self.btn_go_to_qvm_template_gui.setCheckable(False)
         self.btn_go_to_qvm_template_gui.clicked.connect(self.go_to_qvm_template_gui)
         v_layout_templates.addWidget(self.btn_go_to_qvm_template_gui)
-
         if is_inited_repo_3isec_tmpl():
             self.show_qvm_template_gui()
         else:
             self.hide_qvm_template_gui()
-
-        self.tabTemplate.setLayout(v_layout_templates)
-
-        # Tab overview
-        v_layout_overview = QVBoxLayout()
-        label = QLabel("Task manager")
-        v_layout_overview.addWidget(label)
-        self.tabOverview.setLayout(v_layout_overview)
-
-        self.is_3isec_repo_inited = is_inited_repo_3isec()
-
-        # Add the items to VBoxLayout (applied to container widget)
-        # which encompasses the whole window.
-        self.taskContainerLayout = QStackedLayout()
-        self.taskContainerLayout.addWidget(self.render_tasks())
-        self.taskContainerLayout.addWidget(self.render_repo_install())
-        self.taskContainerLayout.addWidget(self.refresh_widget())
-
-        if self.is_3isec_repo_inited:
-            self.taskContainerLayout.setCurrentIndex(2)
-            if self.update_on_start():
-                self.refresh_on_start_checkbox1.hide()
-                self.refresh_tasks()
-        else:
-            self.taskContainerLayout.setCurrentIndex(1)
-
-        self.tabTasks.setLayout(self.taskContainerLayout)
-        self.setCentralWidget(self.tabWidget)
-
-        self.setGeometry(600, 100, 900, 600)
-        self.setWindowTitle('Qubes Task Manager')
-        self.setWindowIcon = QtGui.QIcon.fromTheme("qubes-manager")
-
-    def checkbox_state_changed(self, state):
-        if state == 0:
-            self.set_update_on_start(False)
-        elif state == 2:
-            self.set_update_on_start(True)
+        return v_layout_templates
 
     def render_repo_install(self):
         text = """The repository definition is:
