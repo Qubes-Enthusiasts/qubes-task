@@ -47,11 +47,13 @@ from PyQt5.QtWidgets import (
     QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea,
     QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, QMessageBox)
 
-from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer, QThread
+from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer, QThread, QSize
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPixmap
 # from row import TaskRowWidget
 from qubes_task import *
 from qubesadmin.tools.qvm_template import Template as Task
+
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QStyle
 
 appl = qubesadmin.Qubes()
 args = ['dict']
@@ -135,9 +137,50 @@ class MainWindow(QMainWindow):
             self.set_update_on_start(True)
 
     def render_tasks_tab(self):
+        reponame = "tasks"
+        description = """
+
+                    [3isec-dom0-current]
+                    name = 3isec Qubes Dom0 Repository (updates)
+                    baseurl = https://qubes.3isec.org/rpm/r$releasever/current/dom0/fc32
+                    skip_if_unavailable=False
+                    enabled = 1
+                    metadata_expire = 6h
+                    gpgcheck = 1
+                    gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman
+
+                    Create a file in dom0 with this content at /etc/yum.repos.d/3isec-dom0.repo
+
+                    All packages are signed with my Qubes OS Signing key.
+                    You'll need to get this from a keyserver, or two, to make sure all is fine:
+                    keyserver.ubuntu.com or pgp.mit.edu
+
+                    You can also check the Qubes users mailing list or look on github.
+
+                    Once you have copies of the key, check the fingerprint:
+
+                    gpg -n --import --import-options import-show unman.pub
+
+                    replacing unman.pub with the path to the key.
+                    The output should look similar to this:
+
+                    pub   rsa4096 2016-06-25 [SC]
+                          4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
+                    uid           [ unknown] unman (Qubes OS signing key) 
+                    sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
+                    sub   rsa4096 2016-06-25 [E]
+
+                    In particular, check that the output from your command contains the fingerprint 4B1F 400D F256 51B5 3C41 41B3 8B3F 30F9 C8C0 C2EF
+
+                    When you are happy, copy the key in to dom0:
+
+                    qvm-run -p QUBE_WHERE_YOU_DOWNLOADED_KEY 'cat PATH_TO_KEY' > RPM-GPG-KEY-unman
+                    sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/
+                    """
+
         self.taskContainerLayout = QStackedLayout()
         self.taskContainerLayout.addWidget(self.render_tasks())
-        self.taskContainerLayout.addWidget(self.render_repo_install())
+        self.taskContainerLayout.addWidget(self.render_installation_tab(reponame, description, install_repo_3isec))
         self.taskContainerLayout.addWidget(self.refresh_widget())
 
         if is_inited_repo_3isec():
@@ -231,86 +274,63 @@ class MainWindow(QMainWindow):
             self.hide_qvm_template_gui()
         return v_layout_templates
 
-    def render_repo_install(self):
-        test_repo_install_warning = "The tasks repository is not installed"
-        text1 = "The official instruction from UNMAN about how to install the tasks repository"
-        text2 = """
+    def render_installation_tab(self, reponame, description, f):
+        waring_widget = QWidget()
+        warning_HLayout = QHBoxLayout()
+        warning_icon = QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning)
+        warning_pixmap = warning_icon.pixmap(warning_icon.actualSize(QSize(64, 64)))
+        warning_label_icon = QLabel(self)
+        warning_label_icon.setPixmap(warning_pixmap)
+        warning_HLayout.addWidget(warning_label_icon)
+        warning_label =QLabel(f"The {reponame} repository is not installed")
+        warning_label.setAlignment(Qt.AlignLeft)
+        warning_label_font = warning_label.font()  # get the current font
+        warning_label_font.setPointSize(warning_label_font.pointSize() * 2)  # make font 4 times larger
+        warning_label_font.setBold(True)  # make font bold
+        warning_label.setFont(warning_label_font)
+        warning_HLayout.addWidget(warning_label)
 
-                    [3isec-dom0-current]
-                    name = 3isec Qubes Dom0 Repository (updates)
-                    baseurl = https://qubes.3isec.org/rpm/r$releasever/current/dom0/fc32
-                    skip_if_unavailable=False
-                    enabled = 1
-                    metadata_expire = 6h
-                    gpgcheck = 1
-                    gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman
+        instruction_label = QLabel(
+            f"The official instruction from UNMAN about how to install the {reponame} repository")
 
-                    Create a file in dom0 with this content at /etc/yum.repos.d/3isec-dom0.repo
 
-                    All packages are signed with my Qubes OS Signing key.
-                    You'll need to get this from a keyserver, or two, to make sure all is fine:
-                    keyserver.ubuntu.com or pgp.mit.edu
-
-                    You can also check the Qubes users mailing list or look on github.
-
-                    Once you have copies of the key, check the fingerprint:
-
-                    gpg -n --import --import-options import-show unman.pub
-
-                    replacing unman.pub with the path to the key.
-                    The output should look similar to this:
-
-                    pub   rsa4096 2016-06-25 [SC]
-                          4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
-                    uid           [ unknown] unman (Qubes OS signing key) 
-                    sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
-                    sub   rsa4096 2016-06-25 [E]
-
-                    In particular, check that the output from your command contains the fingerprint 4B1F 400D F256 51B5 3C41 41B3 8B3F 30F9 C8C0 C2EF
-
-                    When you are happy, copy the key in to dom0:
-
-                    qvm-run -p QUBE_WHERE_YOU_DOWNLOADED_KEY 'cat PATH_TO_KEY' > RPM-GPG-KEY-unman
-                    sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/
-                    """
-
-        # Create QLabel instance with some text
-        label = QLabel(text1)
-        lbl = QLabel(text2)
-
-        lbl1 = QLabel("<b>OR you can set up it automatically (will run subcomands with \"sudo\") </b>")
-        lbl1.setAlignment(Qt.AlignCenter)
-        scroll2 = QScrollArea()
-        scroll2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        scroll2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll2.setWidgetResizable(True)
-        scroll2.setWidget(lbl)
+        instruction_description_scroll = QScrollArea()
+        instruction_description_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        instruction_description_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        instruction_description_scroll.setWidgetResizable(True)
+        instruction_description_scroll.setWidget(QLabel(description))
 
         # Create QPushButton instances for OK and Cancel
-        button_ok = QPushButton("<b>OR you can set up it automatically (will run subcomands with \"sudo\") </b>")
+        installation_button = QPushButton("OR you can set up it automatically (will run subcomands with \"sudo\")")
+        font = installation_button.font()  # get the current font
+        font.setBold(True)  # make font bold
+        installation_button.setFont(font)  # set the modified font
+        installation_button.setStyleSheet('QPushButton {background-color: yellow; color: black;}')  # set the button to yellow
 
         def accept():
             msgBox = QMessageBox()
             msgBox.setIcon(QMessageBox.Question)
             msgBox.setText("This action will run subcommands with \"sudo\".")
-            msgBox.setWindowTitle("Warning")
+            msgBox.setWindowTitle("Confirmation")
             msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
             returnValue = msgBox.exec()
             if returnValue == QMessageBox.Ok:
-                install_repo_3isec()
+                f()
                 self.taskContainerLayout.setCurrentIndex(2)
 
         # Connect buttons to the appropriate slots (functions)
-        button_ok.clicked.connect(accept)  # built-in QDialog function to accept (OK) the dialog
+        installation_button.clicked.connect(accept)
 
         # Add the QLabel and QPushButtons to the layout
         installStackLayout = QVBoxLayout()
-        # containerLayout.addWidget(self.searchbar)
-        installStackLayout.addWidget(label)
-        installStackLayout.addWidget(scroll2, 40)
-        # installStackLayout.addWidget(lbl1)
-        installStackLayout.addWidget(button_ok)
+
+        waring_widget.setLayout(warning_HLayout)
+
+        installStackLayout.addWidget(waring_widget)
+        installStackLayout.addWidget(instruction_label)
+        installStackLayout.addWidget(instruction_description_scroll, 40)
+        installStackLayout.addWidget(installation_button)
         installStackWidget = QWidget()
         installStackWidget.setLayout(installStackLayout)
         return installStackWidget
