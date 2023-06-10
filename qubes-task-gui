@@ -17,7 +17,6 @@ import shelve
 
 from unman_repo_installaton import tasks_repo, templates_repo
 
-
 import os
 
 if os.uname()[1] != 'dom0':
@@ -50,7 +49,7 @@ from PyQt5 import QtWidgets, QtGui, uic
 from PyQt5.QtWidgets import (
     QWidget, QApplication, QButtonGroup, QHBoxLayout, QVBoxLayout,
     QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea,
-    QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, QMessageBox)
+    QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, QMessageBox, QGridLayout)
 
 from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer, QThread, QSize
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPixmap
@@ -91,6 +90,34 @@ class TaskRowWidget(QWidget):
         self.hbox.addWidget(self.lbl2, 60)
         self.hbox.addWidget(self.btn_details)
         self.setLayout(self.hbox)
+
+
+class SudoCommandConfirm(QMessageBox):
+    def __init__(self, script, *args, **kwargs):
+        QMessageBox.__init__(self, *args, **kwargs)
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        self.content = QWidget()
+        scroll.setWidget(self.content)
+        lay = QVBoxLayout(self.content)
+        lay.addWidget(QLabel(script, self))
+
+        # self.setIcon(QMessageBox.Question)
+        confirmationIcon = QApplication.style().standardIcon(QStyle.SP_MessageBoxQuestion)
+        confirmationPixmap = confirmationIcon.pixmap(confirmationIcon.actualSize(QSize(64, 64)))
+        confirmationLblIcon = QLabel(self)
+        confirmationLblIcon.setPixmap(confirmationPixmap)
+        self.layout().addWidget(confirmationLblIcon, 0, 0, 1, 1)
+        self.setWindowTitle("Confirmation")
+        sudoLbl = QLabel("This action will run following code with \"sudo\".")
+        sudoLbl.setAlignment(Qt.AlignLeft)
+        sudoLblFont = sudoLbl.font()  # get the current font
+        sudoLblFont.setBold(True)  # make font bold
+        sudoLbl.setFont(sudoLblFont)
+        self.layout().addWidget(sudoLbl, 0, 1, 1,
+                                self.layout().columnCount())
+        self.layout().addWidget(scroll, 1, 0, 1, self.layout().columnCount())
+        self.setStyleSheet("QScrollArea{min-width:300 px; min-height: 400px}")
 
 
 class Worker(QThread):
@@ -263,15 +290,16 @@ class MainWindow(QMainWindow):
             'QPushButton {background-color: yellow; color: black;}')  # set the button to yellow
 
         def accept():
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Question)
-            msgBox.setText("This action will run subcommands with \"sudo\".")
-            msgBox.setWindowTitle("Confirmation")
+            script = repo.get_script()
+            msgBox = SudoCommandConfirm(script)
             msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
             returnValue = msgBox.exec()
             if returnValue == QMessageBox.Ok:
-                repo.install()
+                process = subprocess.Popen(['sudo', 'python3', '-c', script],
+                                           stdin=subprocess.PIPE,
+                                           universal_newlines=True)
+                process.communicate()
                 setCurrentIndex()
 
         # Connect buttons to the appropriate slots (functions)

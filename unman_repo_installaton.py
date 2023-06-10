@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # qubes-task-gui.py
 import os
-import subprocess
 
 unman_key_content = """-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: SKS 1.1.6
@@ -263,12 +262,6 @@ with open(unman_public_key_path, "w") as f:
 print("I3SEC_REPO_INSTALLED")
 """
         return command
-
-    def install(self):
-        process = subprocess.Popen(['sudo', 'python3', '-c', self.get_script()],
-                                   stdin=subprocess.PIPE,
-                                   universal_newlines=True)
-        process.communicate()
 
 
 tasks_repo = RepoInstallation(
