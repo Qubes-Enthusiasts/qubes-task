@@ -104,10 +104,11 @@ class MainWindow(QMainWindow):
     def __init__(self, command='dict', *args, **kwargs):
         super().__init__()
 
+        # create qubes-fancy-task directory
         os.makedirs(self.fancy_directory, exist_ok=True)
 
+        # Tabs
         self.tabWidget = QTabWidget()
-        # Create tabs
         self.tabOverview = QWidget()
         self.tabTasks = QWidget()
         self.tabTemplate = QWidget()
@@ -117,27 +118,10 @@ class MainWindow(QMainWindow):
         self.tabWidget.addTab(self.tabTasks, "Tasks")
         self.tabWidget.addTab(self.tabTemplate, "Templates")
 
-        self.tabTemplate.setLayout(self.render_templates_tab())
         self.tabOverview.setLayout(self.render_overview_tab())
+        self.tabTemplate.setLayout(self.render_templates_tab())
+        self.tabTasks.setLayout(self.render_tasks_tab())
 
-        self.is_3isec_repo_inited = is_inited_repo_3isec()
-
-        # Add the items to VBoxLayout (applied to container widget)
-        # which encompasses the whole window.
-        self.taskContainerLayout = QStackedLayout()
-        self.taskContainerLayout.addWidget(self.render_tasks())
-        self.taskContainerLayout.addWidget(self.render_repo_install())
-        self.taskContainerLayout.addWidget(self.refresh_widget())
-
-        if self.is_3isec_repo_inited:
-            self.taskContainerLayout.setCurrentIndex(2)
-            if self.update_on_start():
-                self.refresh_on_start_checkbox1.hide()
-                self.refresh_tasks()
-        else:
-            self.taskContainerLayout.setCurrentIndex(1)
-
-        self.tabTasks.setLayout(self.taskContainerLayout)
         self.setCentralWidget(self.tabWidget)
 
         self.setGeometry(600, 100, 900, 600)
@@ -149,6 +133,21 @@ class MainWindow(QMainWindow):
             self.set_update_on_start(False)
         elif state == 2:
             self.set_update_on_start(True)
+
+    def render_tasks_tab(self):
+        self.taskContainerLayout = QStackedLayout()
+        self.taskContainerLayout.addWidget(self.render_tasks())
+        self.taskContainerLayout.addWidget(self.render_repo_install())
+        self.taskContainerLayout.addWidget(self.refresh_widget())
+
+        if is_inited_repo_3isec():
+            self.taskContainerLayout.setCurrentIndex(2)
+            if self.update_on_start():
+                self.refresh_on_start_checkbox1.hide()
+                self.refresh_tasks()
+        else:
+            self.taskContainerLayout.setCurrentIndex(1)
+        return self.taskContainerLayout
 
     def render_overview_tab(self):
         # Tab overview
@@ -233,6 +232,7 @@ class MainWindow(QMainWindow):
         return v_layout_templates
 
     def render_repo_install(self):
+        test_repo_install_warning = "The tasks repository is not installed"
         text1 = "The official instruction from UNMAN about how to install the tasks repository"
         text2 = """
 
