@@ -71,9 +71,11 @@ p_args.updatevm = appl.updatevm
 
 from qubesmanager import utils
 
+
 def random_string(length):
     result = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
     return result
+
 
 class LiveShellDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -315,14 +317,14 @@ class MainWindow(QMainWindow):
         self.windowsInstallation = [
             ("win10x64-ltsc-eval", "win10x64-ltsc-eval", "windows", "win10x64-ltsc-eval.png")
         ]
-
+        self.default_inst = "please chose installation"
         type_list = []
         for inst in self.windowsInstallation:
             type_list.append((self.tr(inst[0]), inst[1]))
         self.windowsInstallationBox = QComboBox()
         utils.initialize_widget(widget=self.windowsInstallationBox,
                                 choices=type_list,
-                                selected_value=_translate(currentLocale, "please chose installation"),
+                                selected_value=_translate(currentLocale, self.default_inst),
                                 add_current_label=False)
 
         self.installation_name_label = QLabel()
@@ -707,11 +709,31 @@ class MainWindow(QMainWindow):
 
     def windows_install(self):
         run_id = "task_" + random_string(10)
-        installation_id = "win10x64-ltsc-eval"
         name = str(self.nameWind.text())
-        netvm = self.netvmBox.currentData()
+
+        if len(name) == 0:
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Input error"),
+                self.tr("Name is empty"))
+            return
+
+        installation_id = self.windowsInstallationBox.currentData()
+        if self.windowsInstallationBox.currentData() == self.default_inst:
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Input error"),
+                self.tr("Choose installation"))
+            return
+
+        netvm = getattr(appl, 'default_netvm', None)
+        if self.netvmBox.currentIndex() != 0:
+            netvm = self.netvmBox.currentData()
+
         label = self.colorLabelWindowsVMBox.currentData()
-        default_dispvm = self.workerTempateBox.currentData()
+        default_dispvm = getattr(appl, 'default_dispvm', None)
+        if self.workerTempateBox.currentIndex() != 0:
+            default_dispvm = self.workerTempateBox.currentData()
         scripts = self.windows_installation(installation_id, run_id, default_dispvm, name, netvm, label)
         self.live_shell_dialog = LiveShellDialog(parent=self)
         self.live_shell_dialog.setWindowTitle("Live Output")
