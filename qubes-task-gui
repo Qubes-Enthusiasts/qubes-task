@@ -233,7 +233,8 @@ class MainWindow(QMainWindow):
         return v_layout_templates
 
     def render_repo_install(self):
-        text = """The repository definition is:
+        text1 = "The official instruction from UNMAN about how to install the tasks repository"
+        text2 = """
 
                     [3isec-dom0-current]
                     name = 3isec Qubes Dom0 Repository (updates)
@@ -274,11 +275,19 @@ class MainWindow(QMainWindow):
                     """
 
         # Create QLabel instance with some text
-        label = QLabel(text)
-        label.setAlignment(Qt.AlignCenter)  # Align text to the center
+        label = QLabel(text1)
+        lbl = QLabel(text2)
+
+        lbl1 = QLabel("<b>OR you can set up it automatically (will run subcomands with \"sudo\") </b>")
+        lbl1.setAlignment(Qt.AlignCenter)
+        scroll2 = QScrollArea()
+        scroll2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        scroll2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll2.setWidgetResizable(True)
+        scroll2.setWidget(lbl)
 
         # Create QPushButton instances for OK and Cancel
-        button_ok = QPushButton('OK')
+        button_ok = QPushButton("<b>OR you can set up it automatically (will run subcomands with \"sudo\") </b>")
 
         def accept():
             install_repo_3isec()
@@ -291,6 +300,8 @@ class MainWindow(QMainWindow):
         installStackLayout = QVBoxLayout()
         # containerLayout.addWidget(self.searchbar)
         installStackLayout.addWidget(label)
+        installStackLayout.addWidget(scroll2, 40)
+        # installStackLayout.addWidget(lbl1)
         installStackLayout.addWidget(button_ok)
         installStackWidget = QWidget()
         installStackWidget.setLayout(installStackLayout)
