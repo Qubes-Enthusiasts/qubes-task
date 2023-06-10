@@ -154,8 +154,19 @@ metadata_expire = 6h
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman"""
 
+repo_3isec_tmpl = """[3isec-templates]
+name = 3isec Qubes Templates Repository (updates)
+baseurl = https://qubes.3isec.org/rpm/r$releasever/templates
+skip_if_unavailable = False
+enabled = 1
+metadata_expire = 6h
+gpgcheck = 1
+gpgkey = file:////etc/qubes/repo-templates/keys/RPM-GPG-KEY-unman"""
+
 repo_3isec_path = "/etc/yum.repos.d/3isec-dom0.repo"
+repo_3isec_tmpl_path = "/etc/qubes/repo-templates/3isec-templates.repo"
 unman_public_key_path = "/etc/pki/rpm-gpg/RPM-GPG-KEY-unman"
+unman_public_key_tmpl_path = "/etc/qubes/repo-templates/keys/RPM-GPG-KEY-unman"
 
 
 def is_repo_3isec_path_tasks_installed():
@@ -182,5 +193,29 @@ print("I3SEC_REPO_INSTALLED")
     process.communicate()
 
 
+def install_repo_3isec_tmpl():
+    command = f"""
+_3isec_repo_path = "{repo_3isec_tmpl_path}"
+_3isec_repo = \"""{repo_3isec_tmpl}\"""
+with open(_3isec_repo_path, "w") as f:
+    f.write(_3isec_repo)
+
+unman_public_key_path = "{unman_public_key_tmpl_path}"
+unman_public_key = \"""{unman_public_key}\"""
+with open(unman_public_key_path, "w") as f:
+    f.write(unman_public_key)
+
+print("I3SEC_REPO_INSTALLED")
+"""
+    process = subprocess.Popen(['sudo', 'python3', '-c', command],
+                               stdin=subprocess.PIPE,
+                               universal_newlines=True)
+    process.communicate()
+
+
 def is_inited_repo_3isec():
     return os.path.isfile(repo_3isec_path) and os.path.isfile(unman_public_key_path)
+
+
+def is_inited_repo_3isec_tmpl():
+    return os.path.isfile(repo_3isec_tmpl_path) and os.path.isfile(unman_public_key_tmpl_path)
