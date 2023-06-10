@@ -128,13 +128,42 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap(resource_path("media/QVM-TEMPLATE-GUI.png"))
         self.template_instruction = QLabel()
         self.template_instruction.setPixmap(pixmap)
-        v_layout_templates.addWidget(self.template_instruction)
+
+        # List all files in the directory
+        directory = resource_path("media/templates")
+        files = os.listdir(directory)
+        installation_icons = QWidget()
+        hIconLayout = QHBoxLayout()
+
+        for file in files:
+            # Check if the file is an image (you can add other formats if needed)
+            if file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg"):
+                # Create the full file path
+                filepath = os.path.join(directory, file)
+
+                # Load the image into QPixmap
+                pixmap = QPixmap(filepath)
+
+                # Scale pixmap
+                pixmap = pixmap.scaled(45, 45)
+
+                # Create a QLabel and set the QPixmap to it
+                label = QLabel()
+                label.setPixmap(pixmap)
+
+                # Add label to the layout
+                hIconLayout.addWidget(label)
+
+        installation_icons.setLayout(hIconLayout)
+        v_layout_templates.addWidget(installation_icons)
 
         self.label_qvm_template_gui = QLabel("Look for i3sec templates in repository column ")
+        v_layout_templates.addWidget(self.label_qvm_template_gui)
+        v_layout_templates.addWidget(self.template_instruction)
+
         self.btn_go_to_qvm_template_gui = QPushButton("Go to qvm-template-gui")
         self.btn_go_to_qvm_template_gui.setCheckable(False)
         self.btn_go_to_qvm_template_gui.clicked.connect(self.go_to_qvm_template_gui)
-        v_layout_templates.addWidget(self.label_qvm_template_gui)
         v_layout_templates.addWidget(self.btn_go_to_qvm_template_gui)
 
         if is_inited_repo_3isec_tmpl():
