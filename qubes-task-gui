@@ -67,6 +67,68 @@ p_args.repo_files = REPO_FILE
 p_args.updatevm = appl.updatevm
 
 
+class LiveShellDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.liveShell = QtWidgets.QTextEdit(self)
+        self.liveShell.setReadOnly(True)
+
+        # Set the default size of the QTextEdit widget
+        self.liveShell.setMinimumSize(800, 600)
+
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.addWidget(self.liveShell)
+
+        self.process = QProcess(self)
+        self.process.setProcessChannelMode(QProcess.MergedChannels)
+        self.process.readyRead.connect(self.on_ready_read)
+        self.process.finished.connect(self.on_finished)
+
+    def on_ready_read(self):
+        text = self.process.readAll().data().decode()
+        self.liveShell.moveCursor(QtGui.QTextCursor.End)
+
+        # Check if the output is a progress bar update
+        if text.startswith('\r'):
+            # Move the cursor one line up and to the beginning of the line
+            cursor = self.liveShell.textCursor()
+            cursor.movePosition(QtGui.QTextCursor.Up, QtGui.QTextCursor.MoveAnchor)
+            cursor.movePosition(QtGui.QTextCursor.StartOfLine, QtGui.QTextCursor.MoveAnchor)
+            self.liveShell.setTextCursor(cursor)
+
+            # Remove the current progress line
+            cursor = self.liveShell.textCursor()
+            cursor.select(QtGui.QTextCursor.LineUnderCursor)
+            cursor.removeSelectedText()
+            self.liveShell.setTextCursor(cursor)
+
+            # Insert the new progress text
+            self.liveShell.insertPlainText(text.lstrip('\r'))
+
+        else:
+            self.liveShell.insertPlainText(text)
+
+    def on_finished(self, exit_code):
+        self.process.close()
+        self.liveShell.append(f"Process finished with exit code {exit_code}.")
+
+    def run_script(self, scripts):
+        if not isinstance(scripts, str):  # some of installations send string TODO ;
+            sc = ""
+            for script in scripts:
+                sc = sc + script["script"]
+            scripts = sc
+        print(scripts)
+        self.process.start("bash", ["-c", scripts])
+
+
+def get_step(script, run_on_fail):
+    return {
+        "script": script,
+        "run_on_fail": run_on_fail
+    }
+
+
 class TaskRowWidget(QWidget):
 
     def __init__(self, parent, name, summary):
@@ -146,15 +208,18 @@ class MainWindow(QMainWindow):
         self.tabOverview = QWidget()
         self.tabTasks = QWidget()
         self.tabTemplate = QWidget()
+        self.tabWindows = QWidget()
 
         # Add tabs to the tab widget
         self.tabWidget.addTab(self.tabOverview, "Overview")
         self.tabWidget.addTab(self.tabTasks, "Tasks")
         self.tabWidget.addTab(self.tabTemplate, "Templates")
+        self.tabWidget.addTab(self.tabWindows, "Windows")
 
         self.tabOverview.setLayout(self.render_overview_tab())
         self.tabTemplate.setLayout(self.render_template_tab())
         self.tabTasks.setLayout(self.render_tasks_tab())
+        self.tabWindows.setLayout(self.render_windows_installation())
 
         self.setCentralWidget(self.tabWidget)
 
@@ -167,6 +232,15 @@ class MainWindow(QMainWindow):
             self.set_update_on_start(False)
         elif state == 2:
             self.set_update_on_start(True)
+
+    def render_windows_installation(self):
+        # Tab templates
+        v_layout_templates = QVBoxLayout()
+        self.btn_install_windows = QPushButton("Install windows 10")
+        self.btn_install_windows.setCheckable(False)
+        self.btn_install_windows.clicked.connect(self.windows_install)
+        v_layout_templates.addWidget(self.btn_install_windows)
+        return v_layout_templates
 
     def render_tasks_tab(self):
         reponame = "tasks"
@@ -516,6 +590,135 @@ class MainWindow(QMainWindow):
 
         # Restart the Qubes panel to apply the changes
         os.system('xfce4-panel --restart')
+
+    def windows_install(self):
+        run_id = "yoshkikk"
+        installation_id = "win10x64-ltsc-eval"
+        name = "windows_11"
+        netvm = "sys-net"
+        label = "red"
+        default_dispvm = "debian-11-dvm"
+        scripts = self.windows_installation(installation_id, run_id, default_dispvm, name, netvm, label)
+        self.live_shell_dialog = LiveShellDialog(parent=self)
+        self.live_shell_dialog.setWindowTitle("Live Output")
+
+        self.live_shell_dialog.show()
+        self.live_shell_dialog.run_script(scripts)
+
+    def windows_installation(self, w_inst, run_id, default_dispvm, w_name, w_net_vm, label):
+        repo = "https://github.com/qubes-fancy-manager/qvm-create-windows-qube"
+        repo_branch = "qubes-fancy-manager"
+
+        w_packages = "firefox"
+
+        steps, disposable_name = self.disp_wrap(default_dispvm, run_id)
+
+        installation_prepare = """
+
+        #!/bin/bash
+        # Copyright (C) 2021 Elliot Killick <elliotkillick@zohomail.eu>
+        # Licensed under the MIT License. See LICENSE file for details.
+
+        error() {
+            exit_code="$?"
+            echo -e "${RED}[!]${NC} An unexpected error has occurred! Exiting..." >&2
+            exit "$exit_code"
+        }
+
+        trap error ERR
+
+        RED='\033[0;31m'
+        BLUE='\033[0;34m'
+        GREEN='\033[0;32m'
+        NC='\033[0m'
+
+        # Step 3
+        if [ -f "/usr/lib/qubes/qubes-windows-tools.iso" ]; then
+            echo -e "${BLUE}[i]${NC} Qubes Windows Tools is already installed in Dom0. Skipping download..." >&2
+        else
+            echo -e "${BLUE}[i]${NC} Installing Qubes Windows Tools..." >&2
+            if ! sudo qubes-dom0-update -y qubes-windows-tools; then
+                echo -e "${RED}[!]${NC} Error installing Qubes Windows Tools! Exiting..." >&2
+                exit 1
+            fi
+            if ! [ -f "/usr/lib/qubes/qubes-windows-tools.iso" ]; then
+                echo -e "${RED}[!]${NC} Qubes Windows Tools package is installed, but /usr/lib/qubes/qubes-windows-tools.iso is still missing in Dom0. Exiting..." >&2
+                exit 1
+            fi
+        fi
+
+        echo -e "${BLUE}[i]${NC} Installing package dependencies on $template..." >&2
+        fedora_packages="genisoimage geteltorito datefudge"
+        debian_packages="genisoimage curl datefudge"
+        script='if grep -q '\''ID=fedora'\'' /etc/os-release; then
+          sudo dnf -y install '"$fedora_packages"'
+        elif grep -q '\''ID=debian'\'' /etc/os-release; then
+          sudo apt-get -y install '"$debian_packages"'
+        else
+          echo "Unsupported distribution."
+          exit 1
+        fi'
+        """ + f"""
+        qvm-run -p "{disposable_name}" "$script"
+        """ + """
+
+        echo -e "${BLUE}[i]${NC} Cloning qvm-create-windows-qube GitHub repository..." >&2
+        """ + f"""
+        resources_dir="/home/user/Documents/qvm-create-windows-qube"
+        qvm-run -p "{disposable_name}" "cd {"${resources_dir%/*}"} && git clone --branch {repo_branch} {repo}"
+
+        """ + """
+
+        echo -e "${BLUE}[i]${NC} Please check for a \"Good signature\" from GPG (Verify it out-of-band if necessary)..." >&2
+        """ + f"""
+        qvm-run -p "{disposable_name}" "cd '$resources_dir' && gpg --import author.asc && git verify-commit \$(git rev-list --max-parents=0 HEAD)"
+
+        qvm-run -p --filter-escape-chars --no-color-output "{disposable_name}" "cat '$resources_dir/qvm-create-windows-qube'" | sudo tee /usr/bin/qvm-create-windows-qube > /dev/null
+
+        # Allow execution of script
+        sudo chmod +x /usr/bin/qvm-create-windows-qube
+
+        """ + """
+        echo -e "${GREEN}[+]${NC} Installation complete!"
+
+
+        """ + f"""
+
+                qvm-run -p "{disposable_name}" "cd '$resources_dir'/windows-media/isos && ./download-windows.sh '{w_inst}'"
+                echo "START WINDOWS INSTALLATION"
+                qvm-create-windows-qube --resources-qube "{disposable_name}" -n {w_net_vm} -oyp {w_packages} -i {w_inst}.iso -a {w_inst}.xml {w_name}
+
+
+                """
+
+        return [steps[0], get_step(installation_prepare, False), steps[1]]
+
+    def disp_wrap(self, disp_vm, run_id):
+
+        template_name = f"{run_id}_tmpl"
+        disposable_name = f"{run_id}_disp"
+
+        create_disposable = f"""
+
+            # Create a template from the default disposable template
+            qvm-clone "{disp_vm}" "{template_name}"
+            qvm-volume extend "{template_name}:private" 10GiB || true
+
+            # Create a disposable qube from the template
+            qvm-create --disp --template "{template_name}" "{disposable_name}"
+
+        """
+
+        remove_disposable = f"""
+
+            # Wait for the disposable qube to shut down
+            qvm-shutdown --wait "{disposable_name}"
+            # Remove the disposable qube and template
+            qvm-remove -f "{disposable_name}"
+
+        """
+
+        return [get_step(create_disposable, False), get_step(remove_disposable, True)], disposable_name
 
 
 app = QtWidgets.QApplication(sys.argv)
