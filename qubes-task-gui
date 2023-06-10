@@ -140,7 +140,8 @@ class MainWindow(QMainWindow):
 
         self.taskContainerLayout = QStackedLayout()
         self.taskContainerLayout.addWidget(self.render_tasks())
-        self.taskContainerLayout.addWidget(self.render_installation_tab(tasks_repo, self.taskContainerLayout, 2))
+        self.taskContainerLayout.addWidget(
+            self.render_installation_tab(tasks_repo, lambda: self.taskContainerLayout.setCurrentIndex(2)))
         self.taskContainerLayout.addWidget(self.refresh_widget())
 
         if tasks_repo.is_installed():
@@ -164,7 +165,8 @@ class MainWindow(QMainWindow):
 
         taskContainerLayout = QStackedLayout()
         taskContainerLayout.addWidget(self.render_templates_tab())
-        taskContainerLayout.addWidget(self.render_installation_tab(templates_repo, taskContainerLayout, 0))
+        taskContainerLayout.addWidget(
+            self.render_installation_tab(templates_repo, lambda: taskContainerLayout.setCurrentIndex(0)))
 
         if templates_repo.is_installed():
             taskContainerLayout.setCurrentIndex(0)
@@ -221,7 +223,7 @@ class MainWindow(QMainWindow):
         installStackWidget.setLayout(v_layout_templates)
         return installStackWidget
 
-    def render_installation_tab(self, repo, stack, index):
+    def render_installation_tab(self, repo, setCurrentIndex):
         waring_widget = QWidget()
         warning_HLayout = QHBoxLayout()
         warning_icon = QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning)
@@ -264,7 +266,7 @@ class MainWindow(QMainWindow):
             returnValue = msgBox.exec()
             if returnValue == QMessageBox.Ok:
                 repo.install()
-                stack.setCurrentIndex(index)
+                setCurrentIndex()
 
         # Connect buttons to the appropriate slots (functions)
         installation_button.clicked.connect(accept)
