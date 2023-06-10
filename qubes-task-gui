@@ -238,34 +238,50 @@ class MainWindow(QMainWindow):
     def render_windows_installation(self):
         # Tab templates
         v_layout_templates = QVBoxLayout()
-        combo_box = QComboBox()
         self.btn_install_windows = QPushButton("Install windows 10")
         self.btn_install_windows.setCheckable(False)
         self.btn_install_windows.clicked.connect(self.windows_install)
+
+        self.workerTempateBox = QComboBox()
         utils.initialize_widget_with_vms(
-            widget=combo_box,
+            widget=self.workerTempateBox,
             qubes_app=appl,
             filter_function=(lambda vm: not utils.is_internal(vm) and
                                         vm.klass == 'TemplateVM'),
             allow_none=True)
-        v_layout_templates.addWidget(combo_box)
+        v_layout_templates.addWidget(self.workerTempateBox)
 
-        label = QComboBox()
+        self.colorLabelWindowsVMBox = QComboBox()
         utils.initialize_widget_with_labels(
-            widget=label,
+            widget=self.colorLabelWindowsVMBox,
             qubes_app=appl)
-        v_layout_templates.addWidget(label)
+        v_layout_templates.addWidget(self.colorLabelWindowsVMBox)
 
-        netvm = QComboBox()
+        self.netvmBox = QComboBox()
         utils.initialize_widget_with_default(
-            widget=netvm,
+            widget=self.netvmBox,
             choices=[(vm.name, vm) for vm in appl.domains
                      if not utils.is_internal(vm) and
                      getattr(vm, 'provides_network', False)],
             add_none=True,
             add_qubes_default=True,
             default_value=getattr(appl, 'default_netvm', None))
-        v_layout_templates.addWidget(netvm)
+        v_layout_templates.addWidget(self.netvmBox)
+
+        self.windowsInstallation = [
+            ("win10x64-ltsc-eval", "win10x64-ltsc-eval", "windows", "win10x64-ltsc-eval.png")
+        ]
+
+        type_list = []
+        for inst in self.windowsInstallation:
+            type_list.append((self.tr(inst[0]), inst[1]))
+        self.windowsInstallationBox = QComboBox()
+        utils.initialize_widget(widget=self.windowsInstallationBox,
+                                choices=type_list,
+                                selected_value="please chose installation",
+                                add_current_label=False)
+        v_layout_templates.addWidget(self.windowsInstallationBox)
+
 
         v_layout_templates.addWidget(self.btn_install_windows)
         return v_layout_templates
@@ -623,9 +639,9 @@ class MainWindow(QMainWindow):
         run_id = "yoshkikk"
         installation_id = "win10x64-ltsc-eval"
         name = "windows_11"
-        netvm = "sys-net"
-        label = "red"
-        default_dispvm = "debian-11-dvm"
+        netvm = self.netvmBox.currentData()
+        label = self.colorLabelWindowsVMBox.currentData()
+        default_dispvm = self.workerTempateBox.currentData()
         scripts = self.windows_installation(installation_id, run_id, default_dispvm, name, netvm, label)
         self.live_shell_dialog = LiveShellDialog(parent=self)
         self.live_shell_dialog.setWindowTitle("Live Output")
