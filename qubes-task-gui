@@ -3,6 +3,7 @@
 
 # TODO following imports somehow needed for execution already built pyinstaller exe
 from __future__ import print_function
+import string
 import xml.etree.ElementTree
 import glob
 import numbers
@@ -15,6 +16,7 @@ import sys
 
 import json
 import shelve
+import random
 
 from unman_repo_installaton import tasks_repo, templates_repo
 
@@ -69,6 +71,9 @@ p_args.updatevm = appl.updatevm
 
 from qubesmanager import utils
 
+def random_string(length):
+    result = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+    return result
 
 class LiveShellDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -268,7 +273,7 @@ class MainWindow(QMainWindow):
             self.set_update_on_start(True)
 
     def render_windows_installation(self):
-        currentLocale = 'ru'
+        currentLocale = 'en'
         # Tab templates
         self.gridLayout = QtWidgets.QGridLayout()
         self.gridLayout.setContentsMargins(12, 12, 12, 12)
@@ -290,7 +295,7 @@ class MainWindow(QMainWindow):
                      if vm.klass == 'TemplateVM'],
             add_none=True,
             add_qubes_default=True,
-            default_value=getattr(appl, 'default_template', None))
+            default_value=getattr(appl, 'default_dispvm', None))
 
         self.colorLabelWindowsVMBox = QComboBox()
         utils.initialize_widget_with_labels(
@@ -701,9 +706,9 @@ class MainWindow(QMainWindow):
         os.system('xfce4-panel --restart')
 
     def windows_install(self):
-        run_id = "yoshkikk"
+        run_id = "task_" + random_string(10)
         installation_id = "win10x64-ltsc-eval"
-        name = "windows_11"
+        name = str(self.nameWind.text())
         netvm = self.netvmBox.currentData()
         label = self.colorLabelWindowsVMBox.currentData()
         default_dispvm = self.workerTempateBox.currentData()
