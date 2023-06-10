@@ -18,6 +18,12 @@ import shelve
 from unman_repo_installaton import tasks_repo, templates_repo
 
 
+import os
+
+if os.uname()[1] != 'dom0':
+    print("This script should be executed in dom0.")
+
+
 # Following code ensure that pyinstaller exe use exact needed imports
 def append_system_libs():
     # execute the "python3 -c 'import site; print(json.dumps(site.getsitepackages()))'" command and capture the output
@@ -435,6 +441,48 @@ class MainWindow(QMainWindow):
         print(value)
         with shelve.open(self.fancy_state_path) as db:
             db['update_on_start'] = bool(value)  # need stronger validation
+
+    def add_in_options(self):
+        desktop_entry = """[Desktop Entry]
+        Version=1.0
+        Type=Application
+        Name=qubes-fancy-task
+        GenericName=qubes-fancy-task
+        Comment=An enthusiast's version of QubesOS task manager
+        Exec={}
+        Icon=qubes-manager
+        Terminal=false
+        Categories=QubesTools;
+        """
+        if getattr(sys, 'frozen', False):
+            # The application is run as a bundle (created by PyInstaller)
+            executable_path = sys.executable
+        else:
+            # The application is run as a script
+            executable_path = os.path.realpath(__file__)
+
+        # Create the desktop entry content
+        desktop_entry = desktop_entry.format(executable_path)
+
+        # Create the desktop entry file
+        desktop_entry_file = os.path.join(self.fancy_directory, 'qubes-task-manager.desktop')
+
+        # # Write the script to ~/.qubes-fancy-manager
+        # with open(custom_program_path, 'w') as f:
+        #     f.write(open(__file__).read())
+
+        # Make the script executable
+        # os.chmod(custom_program_path, 0o755)
+
+        # Write the desktop entry to the file
+        with open(desktop_entry_file, 'w') as f:
+            f.write(desktop_entry)
+
+        # Create a symlink in /usr/share/applications
+        os.system(f'sudo ln -s {desktop_entry_file} /usr/share/applications/qubes-fancy-manager.desktop')
+
+        # Restart the Qubes panel to apply the changes
+        os.system('xfce4-panel --restart')
 
 
 app = QtWidgets.QApplication(sys.argv)
