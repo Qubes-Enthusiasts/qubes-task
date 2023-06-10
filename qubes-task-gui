@@ -243,12 +243,14 @@ class MainWindow(QMainWindow):
         self.btn_install_windows.clicked.connect(self.windows_install)
 
         self.workerTempateBox = QComboBox()
-        utils.initialize_widget_with_vms(
+        utils.initialize_widget_with_default(
             widget=self.workerTempateBox,
-            qubes_app=appl,
-            filter_function=(lambda vm: not utils.is_internal(vm) and
-                                        vm.klass == 'TemplateVM'),
-            allow_none=True)
+            choices=[(vm.name, vm) for vm in appl.domains
+                     if vm.klass == 'TemplateVM'],
+            add_none=True,
+            add_qubes_default=True,
+            default_value=getattr(appl, 'default_template', None))
+
         v_layout_templates.addWidget(self.workerTempateBox)
 
         self.colorLabelWindowsVMBox = QComboBox()
