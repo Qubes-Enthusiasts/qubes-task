@@ -45,7 +45,7 @@ from PyQt5 import QtWidgets, QtGui, uic
 from PyQt5.QtWidgets import (
     QWidget, QApplication, QButtonGroup, QHBoxLayout, QVBoxLayout,
     QCheckBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollArea,
-    QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, )
+    QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, QMessageBox)
 
 from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer, QThread
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPixmap
@@ -290,8 +290,16 @@ class MainWindow(QMainWindow):
         button_ok = QPushButton("<b>OR you can set up it automatically (will run subcomands with \"sudo\") </b>")
 
         def accept():
-            install_repo_3isec()
-            self.taskContainerLayout.setCurrentIndex(2)
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Question)
+            msgBox.setText("This action will run subcommands with \"sudo\".")
+            msgBox.setWindowTitle("Warning")
+            msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+
+            returnValue = msgBox.exec()
+            if returnValue == QMessageBox.Ok:
+                install_repo_3isec()
+                self.taskContainerLayout.setCurrentIndex(2)
 
         # Connect buttons to the appropriate slots (functions)
         button_ok.clicked.connect(accept)  # built-in QDialog function to accept (OK) the dialog
