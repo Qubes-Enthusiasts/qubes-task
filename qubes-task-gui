@@ -32,6 +32,12 @@ def append_system_libs():
         sys.path.append(path)
 
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+
 # let's use all libraries from the client to ensure maximum compatibility
 append_system_libs()
 
@@ -42,7 +48,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy, QSpacerItem, QTabWidget, QStackedLayout, )
 
 from PyQt5.QtCore import QObject, Qt, pyqtSignal, QProcess, QTimer, QThread
-from PyQt5.QtGui import QPainter, QFont, QColor, QPen
+from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPixmap
 # from row import TaskRowWidget
 from qubes_task import *
 from qubesadmin.tools.qvm_template import Template as Task
@@ -117,6 +123,12 @@ class MainWindow(QMainWindow):
         self.btn_template_inst.setCheckable(False)
         self.btn_template_inst.clicked.connect(self.install_templates)
         v_layout_templates.addWidget(self.btn_template_inst)
+
+        # Load the image into QPixmap
+        pixmap = QPixmap(resource_path("media/QVM-TEMPLATE-GUI.png"))
+        self.template_instruction = QLabel()
+        self.template_instruction.setPixmap(pixmap)
+        v_layout_templates.addWidget(self.template_instruction)
 
         self.label_qvm_template_gui = QLabel("Look for i3sec templates in repository column ")
         self.btn_go_to_qvm_template_gui = QPushButton("Go to qvm-template-gui")
@@ -288,11 +300,13 @@ class MainWindow(QMainWindow):
         self.btn_template_inst.hide()
         self.label_qvm_template_gui.show()
         self.btn_go_to_qvm_template_gui.show()
+        self.template_instruction.show()
 
     def hide_qvm_template_gui(self):
         self.btn_template_inst.show()
         self.label_qvm_template_gui.hide()
         self.btn_go_to_qvm_template_gui.hide()
+        self.template_instruction.hide()
 
     def refresh_widget(self):
         # Tab tasks

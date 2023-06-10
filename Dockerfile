@@ -10,6 +10,6 @@ COPY . .
 
 # fcntl is unix specific module so it's not included by pyintstaller by default
 # Compile the script into a static executable
-RUN pyinstaller --onefile --clean --noconfirm --hidden-import fcntl qubes-task-gui
+RUN pyinstaller --add-data "media:media" --onefile --clean --noconfirm --hidden-import fcntl qubes-task-gui
 
 CMD cp /app/dist/* /fancy
