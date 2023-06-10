@@ -121,7 +121,7 @@ class MainWindow(QMainWindow):
         self.tabWidget.addTab(self.tabTemplate, "Templates")
 
         self.tabOverview.setLayout(self.render_overview_tab())
-        self.tabTemplate.setLayout(self.render_templates_tab())
+        self.tabTemplate.setLayout(self.render_template_tab())
         self.tabTasks.setLayout(self.render_tasks_tab())
 
         self.setCentralWidget(self.tabWidget)
@@ -200,37 +200,53 @@ class MainWindow(QMainWindow):
 
         return v_layout_overview
 
+    def render_template_tab(self):
+        reponame = "templates"
+        description = """
+
+                    All templates are signed with my Qubes OS Signing key:
+
+                    pub   rsa4096 2016-06-25 [SC]
+                          4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
+                    uid           [ unknown] unman (Qubes OS signing key) 
+                    sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
+                    sub   rsa4096 2016-06-25 [E]
+                    
+                    
+                    You can read about how to get a copy of the key, and how to validate it here.
+                    You will need to copy the key in to dom0:
+                    qvm-run -p qube 'cat PATH_TO_KEY ' > RPM-GPG-KEY-unman
+                    and then move it into place:
+                    sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/RPM-GPG-KEY-unman
+                    
+                    Download the template you want to use, and copy it into dom0:
+                    qvm-run -p QUBE 'cat PATH_TO_DOWNLOADED_TEMPLATE ' > TEMPLATE_PACKAGE_NAME
+                    replacing TEMPLATE_PACKAGE_NAME with a name of your choice.
+                    Then check the signature by (e.g):
+                    rpm -K TEMPLATE_PACKAGE_NAME
+                    
+                    Install the template using qvm-template:
+                    qvm-template install --keyring /etc/pki/rpm-gpg/RPM-GPG-KEY-unman FULL_PATH_TO_DOWNLOADED_TEMPLATE 
+                    """
+
+        taskContainerLayout = QStackedLayout()
+        taskContainerLayout.addWidget(self.render_templates_tab())
+        taskContainerLayout.addWidget(self.render_installation_tab(reponame, description, install_repo_3isec_tmpl))
+
+        if is_inited_repo_3isec_tmpl():
+            taskContainerLayout.setCurrentIndex(0)
+        else:
+            taskContainerLayout.setCurrentIndex(1)
+        return taskContainerLayout
+
     def render_templates_tab(self):
         # Tab templates
         v_layout_templates = QVBoxLayout()
-        self.btn_template_inst = QPushButton("Set up templates i3sec")
-        self.btn_template_inst.setCheckable(False)
-        # self.btn_template_inst.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #4CAF50;
-        #         color: white;
-        #         border: none;
-        #         padding: 15px 32px;
-        #         text-align: center;
-        #         text-decoration: none;
-        #         display: inline-block;
-        #         font-size: 16px;
-        #         margin: 4px 2px;
-        #         cursor: pointer;
-        #         transition-duration: 0.4s;
-        #     }
-        #
-        #     QPushButton:hover {
-        #         background-color: #45a049;
-        #     }
-        # """)
-        self.btn_template_inst.clicked.connect(self.install_templates)
-        v_layout_templates.addWidget(self.btn_template_inst)
 
         # Load the image into QPixmap
         pixmap = QPixmap(resource_path("media/QVM-TEMPLATE-GUI.png"))
-        self.template_instruction = QLabel()
-        self.template_instruction.setPixmap(pixmap)
+        template_instruction = QLabel()
+        template_instruction.setPixmap(pixmap)
 
         # List all files in the directory
         directory = resource_path("media/templates")
@@ -260,19 +276,17 @@ class MainWindow(QMainWindow):
         installation_icons.setLayout(hIconLayout)
         v_layout_templates.addWidget(installation_icons)
 
-        self.label_qvm_template_gui = QLabel("Look for i3sec templates in repository column ")
-        v_layout_templates.addWidget(self.label_qvm_template_gui)
-        v_layout_templates.addWidget(self.template_instruction)
+        label_qvm_template_gui = QLabel("Look for i3sec templates in repository column ")
+        v_layout_templates.addWidget(label_qvm_template_gui)
+        v_layout_templates.addWidget(template_instruction)
 
-        self.btn_go_to_qvm_template_gui = QPushButton("Go to qvm-template-gui")
-        self.btn_go_to_qvm_template_gui.setCheckable(False)
-        self.btn_go_to_qvm_template_gui.clicked.connect(self.go_to_qvm_template_gui)
-        v_layout_templates.addWidget(self.btn_go_to_qvm_template_gui)
-        if is_inited_repo_3isec_tmpl():
-            self.show_qvm_template_gui()
-        else:
-            self.hide_qvm_template_gui()
-        return v_layout_templates
+        btn_go_to_qvm_template_gui = QPushButton("Go to qvm-template-gui")
+        btn_go_to_qvm_template_gui.setCheckable(False)
+        btn_go_to_qvm_template_gui.clicked.connect(self.go_to_qvm_template_gui)
+        v_layout_templates.addWidget(btn_go_to_qvm_template_gui)
+        installStackWidget = QWidget()
+        installStackWidget.setLayout(v_layout_templates)
+        return installStackWidget
 
     def render_installation_tab(self, reponame, description, f):
         waring_widget = QWidget()
@@ -282,7 +296,7 @@ class MainWindow(QMainWindow):
         warning_label_icon = QLabel(self)
         warning_label_icon.setPixmap(warning_pixmap)
         warning_HLayout.addWidget(warning_label_icon)
-        warning_label =QLabel(f"The {reponame} repository is not installed")
+        warning_label = QLabel(f"The {reponame} repository is not installed")
         warning_label.setAlignment(Qt.AlignLeft)
         warning_label_font = warning_label.font()  # get the current font
         warning_label_font.setPointSize(warning_label_font.pointSize() * 2)  # make font 4 times larger
@@ -292,7 +306,6 @@ class MainWindow(QMainWindow):
 
         instruction_label = QLabel(
             f"The official instruction from UNMAN about how to install the {reponame} repository")
-
 
         instruction_description_scroll = QScrollArea()
         instruction_description_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -305,7 +318,8 @@ class MainWindow(QMainWindow):
         font = installation_button.font()  # get the current font
         font.setBold(True)  # make font bold
         installation_button.setFont(font)  # set the modified font
-        installation_button.setStyleSheet('QPushButton {background-color: yellow; color: black;}')  # set the button to yellow
+        installation_button.setStyleSheet(
+            'QPushButton {background-color: yellow; color: black;}')  # set the button to yellow
 
         def accept():
             msgBox = QMessageBox()
@@ -380,24 +394,8 @@ class MainWindow(QMainWindow):
         taskStackWidget.setLayout(taskStackLayout)
         return taskStackWidget
 
-    def install_templates(self):
-        install_repo_3isec_tmpl()
-        self.show_qvm_template_gui()
-
     def go_to_qvm_template_gui(self):
         subprocess.Popen(["qvm-template-gui"], start_new_session=True)
-
-    def show_qvm_template_gui(self):
-        self.btn_template_inst.hide()
-        self.label_qvm_template_gui.show()
-        self.btn_go_to_qvm_template_gui.show()
-        self.template_instruction.show()
-
-    def hide_qvm_template_gui(self):
-        self.btn_template_inst.show()
-        self.label_qvm_template_gui.hide()
-        self.btn_go_to_qvm_template_gui.hide()
-        self.template_instruction.hide()
 
     def refresh_widget(self):
         # Tab tasks
