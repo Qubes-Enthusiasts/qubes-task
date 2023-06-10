@@ -69,6 +69,7 @@ p_args.updatevm = appl.updatevm
 
 from qubesmanager import utils
 
+
 class LiveShellDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -184,6 +185,37 @@ class SudoCommandConfirm(QMessageBox):
         self.setStyleSheet("QScrollArea{min-width:300 px; min-height: 400px}")
 
 
+def _translate(locale, field):
+    translations = {
+        'ru': {
+            'please chose installation': 'пожалуйста выберите версию',
+            'Install windows': 'установить виндовс',
+            'Installation:': 'Версия:',
+            'Worker template:': 'Рабочая машина:',
+            'Net vm:': 'Сетевая машина:',
+            'Name:': 'Название:',
+        },
+        'es': {
+            'please chose installation': 'por favor elige version',
+            'Install windows': 'instalar windows',
+            'Installation:': 'Version:',
+            'Worker template:': 'Template:',
+            'Net vm:': 'Red vm:',
+            'Name:': 'Nombre vm:',
+        }
+    }
+    # enforce all language in brute way for now
+    for iLocale in translations:
+        try:
+            translations[iLocale][field]
+        except Exception as e:
+            raise f"Locale {iLocale} not contain translation for field {field}; caused exception {str(e)}"
+
+    if locale == 'en':
+        return field
+    return translations[locale][field]
+
+
 class Worker(QThread):
     finished = pyqtSignal(dict)
 
@@ -236,11 +268,20 @@ class MainWindow(QMainWindow):
             self.set_update_on_start(True)
 
     def render_windows_installation(self):
+        currentLocale = 'ru'
         # Tab templates
-        v_layout_templates = QVBoxLayout()
-        self.btn_install_windows = QPushButton("Install windows 10")
+        self.gridLayout = QtWidgets.QGridLayout()
+        self.gridLayout.setContentsMargins(12, 12, 12, 12)
+        self.gridLayout.setHorizontalSpacing(12)
+        self.gridLayout.setVerticalSpacing(9)
+        self.gridLayout.setObjectName("gridLayout")
+
+        self.btn_install_windows = QPushButton(_translate(currentLocale, "Install windows"))
         self.btn_install_windows.setCheckable(False)
         self.btn_install_windows.clicked.connect(self.windows_install)
+
+        self.nameWind = QtWidgets.QLineEdit()
+        self.nameWind.setObjectName("nameWindQube")
 
         self.workerTempateBox = QComboBox()
         utils.initialize_widget_with_default(
@@ -251,13 +292,10 @@ class MainWindow(QMainWindow):
             add_qubes_default=True,
             default_value=getattr(appl, 'default_template', None))
 
-        v_layout_templates.addWidget(self.workerTempateBox)
-
         self.colorLabelWindowsVMBox = QComboBox()
         utils.initialize_widget_with_labels(
             widget=self.colorLabelWindowsVMBox,
             qubes_app=appl)
-        v_layout_templates.addWidget(self.colorLabelWindowsVMBox)
 
         self.netvmBox = QComboBox()
         utils.initialize_widget_with_default(
@@ -268,7 +306,6 @@ class MainWindow(QMainWindow):
             add_none=True,
             add_qubes_default=True,
             default_value=getattr(appl, 'default_netvm', None))
-        v_layout_templates.addWidget(self.netvmBox)
 
         self.windowsInstallation = [
             ("win10x64-ltsc-eval", "win10x64-ltsc-eval", "windows", "win10x64-ltsc-eval.png")
@@ -280,13 +317,39 @@ class MainWindow(QMainWindow):
         self.windowsInstallationBox = QComboBox()
         utils.initialize_widget(widget=self.windowsInstallationBox,
                                 choices=type_list,
-                                selected_value="please chose installation",
+                                selected_value=_translate(currentLocale, "please chose installation"),
                                 add_current_label=False)
-        v_layout_templates.addWidget(self.windowsInstallationBox)
 
+        self.installation_name_label = QLabel()
+        self.gridLayout.addWidget(self.installation_name_label, 2, 1, 1, 1)
+        self.gridLayout.addWidget(self.nameWind, 2, 3, 1, 2)
+        self.gridLayout.addWidget(self.colorLabelWindowsVMBox, 2, 6, 1, 1)
 
-        v_layout_templates.addWidget(self.btn_install_windows)
-        return v_layout_templates
+        self.worker_select_label = QLabel()
+        self.gridLayout.addWidget(self.worker_select_label, 3, 1, 1, 1)
+        self.gridLayout.addWidget(self.workerTempateBox, 3, 3, 1, 1)
+
+        self.netvm_select_label = QLabel()
+        self.gridLayout.addWidget(self.netvm_select_label, 4, 1, 1, 1)
+        self.gridLayout.addWidget(self.netvmBox, 4, 3, 1, 1)
+
+        self.version_select_label = QLabel()
+        self.gridLayout.addWidget(self.version_select_label, 6, 1, 1, 1)
+        self.gridLayout.addWidget(self.windowsInstallationBox, 6, 3, 1, 1)
+        self.gridLayout.addWidget(self.btn_install_windows, 7, 3, 1, 1)
+
+        self.retranslateUi(currentLocale)
+
+        return self.gridLayout
+
+    # simple mock to set translations;
+    def retranslateUi(self, locale):
+        # _translate = QtCore.QCoreApplication.translate
+
+        self.version_select_label.setText(_translate(locale, "Installation:"))
+        self.installation_name_label.setText(_translate(locale, "Name:"))
+        self.worker_select_label.setText(_translate(locale, "Worker template:"))
+        self.netvm_select_label.setText(_translate(locale, "Net vm:"))
 
     def render_tasks_tab(self):
         reponame = "tasks"
