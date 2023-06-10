@@ -3,7 +3,7 @@
 import os
 import subprocess
 
-unman_public_key = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+unman_key_content = """-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: SKS 1.1.6
 Comment: Hostname: pgp.mit.edu
 
@@ -145,7 +145,7 @@ bkQpeEeUicnrMRuefMU96B7LckPDWFdBf3UgNUAG6GRTPJjGsWOZQAYetnKRWix+Bd315qgQ
 -----END PGP PUBLIC KEY BLOCK-----
 """
 
-repo_3isec = """[3isec-dom0-current]
+tasks_repo_content = """[3isec-dom0-current]
 name = 3isec Qubes Dom0 Repository (updates)
 baseurl = https://qubes.3isec.org/rpm/r$releasever/current/dom0/fc32
 skip_if_unavailable=False
@@ -154,7 +154,7 @@ metadata_expire = 6h
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman"""
 
-repo_3isec_tmpl = """[3isec-templates]
+templates_repo_content = """[3isec-templates]
 name = 3isec Qubes Templates Repository (updates)
 baseurl = https://qubes.3isec.org/rpm/r$releasever/templates
 skip_if_unavailable = False
@@ -163,59 +163,126 @@ metadata_expire = 6h
 gpgcheck = 1
 gpgkey = file:////etc/qubes/repo-templates/keys/RPM-GPG-KEY-unman"""
 
-repo_3isec_path = "/etc/yum.repos.d/3isec-dom0.repo"
-repo_3isec_tmpl_path = "/etc/qubes/repo-templates/3isec-templates.repo"
-unman_public_key_path = "/etc/pki/rpm-gpg/RPM-GPG-KEY-unman"
-unman_public_key_tmpl_path = "/etc/qubes/repo-templates/keys/RPM-GPG-KEY-unman"
+tasks_repo_path = "/etc/yum.repos.d/3isec-dom0.repo"
+templates_repo_path = "/etc/qubes/repo-templates/3isec-templates.repo"
+tasks_key_path = "/etc/pki/rpm-gpg/RPM-GPG-KEY-unman"
+templates_key_path = "/etc/qubes/repo-templates/keys/RPM-GPG-KEY-unman"
+
+task_instructions = """
+
+            [3isec-dom0-current]
+            name = 3isec Qubes Dom0 Repository (updates)
+            baseurl = https://qubes.3isec.org/rpm/r$releasever/current/dom0/fc32
+            skip_if_unavailable=False
+            enabled = 1
+            metadata_expire = 6h
+            gpgcheck = 1
+            gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman
+
+            Create a file in dom0 with this content at /etc/yum.repos.d/3isec-dom0.repo
+
+            All packages are signed with my Qubes OS Signing key.
+            You'll need to get this from a keyserver, or two, to make sure all is fine:
+            keyserver.ubuntu.com or pgp.mit.edu
+
+            You can also check the Qubes users mailing list or look on github.
+
+            Once you have copies of the key, check the fingerprint:
+
+            gpg -n --import --import-options import-show unman.pub
+
+            replacing unman.pub with the path to the key.
+            The output should look similar to this:
+
+            pub   rsa4096 2016-06-25 [SC]
+                  4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
+            uid           [ unknown] unman (Qubes OS signing key) 
+            sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
+            sub   rsa4096 2016-06-25 [E]
+
+            In particular, check that the output from your command contains the fingerprint 4B1F 400D F256 51B5 3C41 41B3 8B3F 30F9 C8C0 C2EF
+
+            When you are happy, copy the key in to dom0:
+
+            qvm-run -p QUBE_WHERE_YOU_DOWNLOADED_KEY 'cat PATH_TO_KEY' > RPM-GPG-KEY-unman
+            sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/
+            """
+
+templates_instructions = """
+
+             All templates are signed with my Qubes OS Signing key:
+
+             pub   rsa4096 2016-06-25 [SC]
+                   4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
+             uid           [ unknown] unman (Qubes OS signing key) 
+             sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
+             sub   rsa4096 2016-06-25 [E]
+             
+             
+             You can read about how to get a copy of the key, and how to validate it here.
+             You will need to copy the key in to dom0:
+             qvm-run -p qube 'cat PATH_TO_KEY ' > RPM-GPG-KEY-unman
+             and then move it into place:
+             sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/RPM-GPG-KEY-unman
+             
+             Download the template you want to use, and copy it into dom0:
+             qvm-run -p QUBE 'cat PATH_TO_DOWNLOADED_TEMPLATE ' > TEMPLATE_PACKAGE_NAME
+             replacing TEMPLATE_PACKAGE_NAME with a name of your choice.
+             Then check the signature by (e.g):
+             rpm -K TEMPLATE_PACKAGE_NAME
+             
+             Install the template using qvm-template:
+             qvm-template install --keyring /etc/pki/rpm-gpg/RPM-GPG-KEY-unman FULL_PATH_TO_DOWNLOADED_TEMPLATE 
+             """
 
 
-def is_repo_3isec_path_tasks_installed():
-    return os.path.isfile(repo_3isec_path) and os.path.isfile(unman_public_key_path)
+class RepoInstallation:
+    def __init__(self, reponame, instructions, key_path, key_content, repo_path, repo_content):
+        self.reponame = reponame
+        self.instructions = instructions
+        self.key_path = key_path
+        self.key_content = key_content
+        self.repo_path = repo_path
+        self.repo_content = repo_content
 
+    def is_installed(self):
+        return os.path.isfile(self.key_path) and os.path.isfile(self.repo_path)
 
-def install_repo_3isec():
-    command = f"""
-_3isec_repo_path = "{repo_3isec_path}"
-_3isec_repo = \"""{repo_3isec}\"""
+    def get_script(self):
+        command = f"""
+_3isec_repo_path = "{self.repo_path}"
+_3isec_repo = \"""{self.repo_content}\"""
 with open(_3isec_repo_path, "w") as f:
     f.write(_3isec_repo)
 
-unman_public_key_path = "{unman_public_key_path}"
-unman_public_key = \"""{unman_public_key}\"""
+unman_public_key_path = "{self.key_path}"
+unman_public_key = \"""{self.key_content}\"""
 with open(unman_public_key_path, "w") as f:
     f.write(unman_public_key)
 
 print("I3SEC_REPO_INSTALLED")
 """
-    process = subprocess.Popen(['sudo', 'python3', '-c', command],
-                               stdin=subprocess.PIPE,
-                               universal_newlines=True)
-    process.communicate()
+        return command
+
+    def install(self):
+        process = subprocess.Popen(['sudo', 'python3', '-c', self.get_script()],
+                                   stdin=subprocess.PIPE,
+                                   universal_newlines=True)
+        process.communicate()
 
 
-def install_repo_3isec_tmpl():
-    command = f"""
-_3isec_repo_path = "{repo_3isec_tmpl_path}"
-_3isec_repo = \"""{repo_3isec_tmpl}\"""
-with open(_3isec_repo_path, "w") as f:
-    f.write(_3isec_repo)
+tasks_repo = RepoInstallation(
+    "tasks",
+    task_instructions,
+    tasks_key_path,
+    unman_key_content,
+    tasks_repo_path,
+    tasks_repo_content)
 
-unman_public_key_path = "{unman_public_key_tmpl_path}"
-unman_public_key = \"""{unman_public_key}\"""
-with open(unman_public_key_path, "w") as f:
-    f.write(unman_public_key)
-
-print("I3SEC_REPO_INSTALLED")
-"""
-    process = subprocess.Popen(['sudo', 'python3', '-c', command],
-                               stdin=subprocess.PIPE,
-                               universal_newlines=True)
-    process.communicate()
-
-
-def is_inited_repo_3isec():
-    return os.path.isfile(repo_3isec_path) and os.path.isfile(unman_public_key_path)
-
-
-def is_inited_repo_3isec_tmpl():
-    return os.path.isfile(repo_3isec_tmpl_path) and os.path.isfile(unman_public_key_tmpl_path)
+templates_repo = RepoInstallation(
+    "templates",
+    templates_instructions,
+    templates_key_path,
+    unman_key_content,
+    templates_repo_path,
+    templates_repo_content)

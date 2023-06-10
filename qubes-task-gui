@@ -15,8 +15,7 @@ import sys
 import json
 import shelve
 
-from unman_repo_installaton import install_repo_3isec, install_repo_3isec_tmpl, is_inited_repo_3isec, \
-    is_inited_repo_3isec_tmpl
+from unman_repo_installaton import tasks_repo, templates_repo
 
 
 # Following code ensure that pyinstaller exe use exact needed imports
@@ -138,52 +137,13 @@ class MainWindow(QMainWindow):
 
     def render_tasks_tab(self):
         reponame = "tasks"
-        description = """
-
-                    [3isec-dom0-current]
-                    name = 3isec Qubes Dom0 Repository (updates)
-                    baseurl = https://qubes.3isec.org/rpm/r$releasever/current/dom0/fc32
-                    skip_if_unavailable=False
-                    enabled = 1
-                    metadata_expire = 6h
-                    gpgcheck = 1
-                    gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-unman
-
-                    Create a file in dom0 with this content at /etc/yum.repos.d/3isec-dom0.repo
-
-                    All packages are signed with my Qubes OS Signing key.
-                    You'll need to get this from a keyserver, or two, to make sure all is fine:
-                    keyserver.ubuntu.com or pgp.mit.edu
-
-                    You can also check the Qubes users mailing list or look on github.
-
-                    Once you have copies of the key, check the fingerprint:
-
-                    gpg -n --import --import-options import-show unman.pub
-
-                    replacing unman.pub with the path to the key.
-                    The output should look similar to this:
-
-                    pub   rsa4096 2016-06-25 [SC]
-                          4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
-                    uid           [ unknown] unman (Qubes OS signing key) 
-                    sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
-                    sub   rsa4096 2016-06-25 [E]
-
-                    In particular, check that the output from your command contains the fingerprint 4B1F 400D F256 51B5 3C41 41B3 8B3F 30F9 C8C0 C2EF
-
-                    When you are happy, copy the key in to dom0:
-
-                    qvm-run -p QUBE_WHERE_YOU_DOWNLOADED_KEY 'cat PATH_TO_KEY' > RPM-GPG-KEY-unman
-                    sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/
-                    """
 
         self.taskContainerLayout = QStackedLayout()
         self.taskContainerLayout.addWidget(self.render_tasks())
-        self.taskContainerLayout.addWidget(self.render_installation_tab(reponame, description, install_repo_3isec))
+        self.taskContainerLayout.addWidget(self.render_installation_tab(tasks_repo, self.taskContainerLayout, 2))
         self.taskContainerLayout.addWidget(self.refresh_widget())
 
-        if is_inited_repo_3isec():
+        if tasks_repo.is_installed():
             self.taskContainerLayout.setCurrentIndex(2)
             if self.update_on_start():
                 self.refresh_on_start_checkbox1.hide()
@@ -201,39 +161,12 @@ class MainWindow(QMainWindow):
         return v_layout_overview
 
     def render_template_tab(self):
-        reponame = "templates"
-        description = """
-
-                    All templates are signed with my Qubes OS Signing key:
-
-                    pub   rsa4096 2016-06-25 [SC]
-                          4B1F 400D F256 51B5 3C41  41B3 8B3F 30F9 C8C0 C2EF
-                    uid           [ unknown] unman (Qubes OS signing key) 
-                    sub   rsa4096 2016-06-27 [S] [expires: 2024-06-30]
-                    sub   rsa4096 2016-06-25 [E]
-                    
-                    
-                    You can read about how to get a copy of the key, and how to validate it here.
-                    You will need to copy the key in to dom0:
-                    qvm-run -p qube 'cat PATH_TO_KEY ' > RPM-GPG-KEY-unman
-                    and then move it into place:
-                    sudo mv RPM-GPG-KEY-unman /etc/pki/rpm-gpg/RPM-GPG-KEY-unman
-                    
-                    Download the template you want to use, and copy it into dom0:
-                    qvm-run -p QUBE 'cat PATH_TO_DOWNLOADED_TEMPLATE ' > TEMPLATE_PACKAGE_NAME
-                    replacing TEMPLATE_PACKAGE_NAME with a name of your choice.
-                    Then check the signature by (e.g):
-                    rpm -K TEMPLATE_PACKAGE_NAME
-                    
-                    Install the template using qvm-template:
-                    qvm-template install --keyring /etc/pki/rpm-gpg/RPM-GPG-KEY-unman FULL_PATH_TO_DOWNLOADED_TEMPLATE 
-                    """
 
         taskContainerLayout = QStackedLayout()
         taskContainerLayout.addWidget(self.render_templates_tab())
-        taskContainerLayout.addWidget(self.render_installation_tab(reponame, description, install_repo_3isec_tmpl))
+        taskContainerLayout.addWidget(self.render_installation_tab(templates_repo, taskContainerLayout, 0))
 
-        if is_inited_repo_3isec_tmpl():
+        if templates_repo.is_installed():
             taskContainerLayout.setCurrentIndex(0)
         else:
             taskContainerLayout.setCurrentIndex(1)
@@ -288,7 +221,7 @@ class MainWindow(QMainWindow):
         installStackWidget.setLayout(v_layout_templates)
         return installStackWidget
 
-    def render_installation_tab(self, reponame, description, f):
+    def render_installation_tab(self, repo, stack, index):
         waring_widget = QWidget()
         warning_HLayout = QHBoxLayout()
         warning_icon = QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning)
@@ -296,7 +229,7 @@ class MainWindow(QMainWindow):
         warning_label_icon = QLabel(self)
         warning_label_icon.setPixmap(warning_pixmap)
         warning_HLayout.addWidget(warning_label_icon)
-        warning_label = QLabel(f"The {reponame} repository is not installed")
+        warning_label = QLabel(f"The {repo.reponame} repository is not installed")
         warning_label.setAlignment(Qt.AlignLeft)
         warning_label_font = warning_label.font()  # get the current font
         warning_label_font.setPointSize(warning_label_font.pointSize() * 2)  # make font 4 times larger
@@ -305,13 +238,13 @@ class MainWindow(QMainWindow):
         warning_HLayout.addWidget(warning_label)
 
         instruction_label = QLabel(
-            f"The official instruction from UNMAN about how to install the {reponame} repository")
+            f"The official instruction from UNMAN about how to install the {repo.reponame} repository")
 
         instruction_description_scroll = QScrollArea()
         instruction_description_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         instruction_description_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         instruction_description_scroll.setWidgetResizable(True)
-        instruction_description_scroll.setWidget(QLabel(description))
+        instruction_description_scroll.setWidget(QLabel(repo.instructions))
 
         # Create QPushButton instances for OK and Cancel
         installation_button = QPushButton("OR you can set up it automatically (will run subcomands with \"sudo\")")
@@ -330,8 +263,8 @@ class MainWindow(QMainWindow):
 
             returnValue = msgBox.exec()
             if returnValue == QMessageBox.Ok:
-                f()
-                self.taskContainerLayout.setCurrentIndex(2)
+                repo.install()
+                stack.setCurrentIndex(index)
 
         # Connect buttons to the appropriate slots (functions)
         installation_button.clicked.connect(accept)
