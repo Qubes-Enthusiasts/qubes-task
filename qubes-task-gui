@@ -249,6 +249,11 @@ class MainWindow(QMainWindow):
         v_layout_templates.addWidget(template_instruction)
 
         btn_go_to_qvm_template_gui = QPushButton("Go to qvm-template-gui")
+        font = btn_go_to_qvm_template_gui.font()  # get the current font
+        font.setBold(True)  # make font bold
+        btn_go_to_qvm_template_gui.setFont(font)  # set the modified font
+        btn_go_to_qvm_template_gui.setStyleSheet(
+            'QPushButton {background-color: green; color: white;}')
         btn_go_to_qvm_template_gui.setCheckable(False)
         btn_go_to_qvm_template_gui.clicked.connect(self.go_to_qvm_template_gui)
         v_layout_templates.addWidget(btn_go_to_qvm_template_gui)
