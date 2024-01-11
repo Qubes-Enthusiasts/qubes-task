@@ -57,7 +57,7 @@ It's also possible to set flag so updates will happen on start.
 # Build 
 
 The build process is maximally simplified and self contained in the Dockerfile. Following command will create fancy directory where later docker will copy exe of qubes-task
->sudo rm -rf fancy/ && mkdir fancy && docker build -t fnc . && docker run -v /home/user/dev/qubes-fancy-task/fancy:/fancy fnc && sudo chmod 777 fancy/* fancy/
+>sudo rm -rf fancy/ && mkdir fancy && docker build -t fnc . && docker run -v /home/user/dev/qubes-fancy-task/fancy:/fancy fnc
 
 All comands can be run out of docker but in this case you will need install all dependencies. 
 
