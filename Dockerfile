@@ -3,7 +3,7 @@ FROM fedora:32 as base
 
 # Install Python 3.8 and other required packages
 RUN dnf -y install python38 python3-pip gcc make wget
-RUN python3.8 -m pip install pyinstaller
+RUN python3.8 -m pip install pyinstaller pyqt5-sip
 
 WORKDIR /app
 COPY . .
